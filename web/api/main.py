@@ -11,7 +11,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 
+from engine.fontgen.builder import FontBuilder, FontMetadata
 from engine.glyphs.extractor import GlyphExtractor
+from engine.renderer.handwriting import HandwritingRenderer, RenderOptions
 from engine.segmentation.detector import WorksheetDetector
 from engine.worksheet.generator import WorksheetGenerator
 
@@ -246,8 +248,38 @@ async def render_text(body: RenderRequest) -> RenderResponse:
     Raises:
         404: If session_id is not recognised.
     """
-    # TODO: Implement handwriting renderer (Milestone 4)
-    raise HTTPException(status_code=501, detail="Rendering not yet implemented.")
+    # Check session and find font
+    session_dir = _UPLOADS_DIR / body.session_id
+    if not session_dir.exists():
+        raise HTTPException(status_code=404, detail=f"Session '{body.session_id}' not found.")
+
+    font_path = _OUTPUTS_DIR / f"{body.session_id}.ttf"
+    if not font_path.exists():
+        raise HTTPException(
+            status_code=400,
+            detail="Font not yet generated for this session. Call /api/font/generate first.",
+        )
+
+    _OUTPUTS_DIR.mkdir(parents=True, exist_ok=True)
+    output_path = _OUTPUTS_DIR / f"render_{uuid.uuid4().hex[:8]}.png"
+
+    options = RenderOptions(
+        font_path=font_path,
+        font_size=body.font_size,
+        line_spacing=body.line_spacing,
+    )
+
+    renderer = HandwritingRenderer()
+    renderer.render(body.text, options, output_path)
+
+    from PIL import Image as PILImage
+
+    img = PILImage.open(output_path)
+    return RenderResponse(
+        image_url=f"/api/renders/{output_path.name}",
+        width=img.width,
+        height=img.height,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -262,5 +294,79 @@ async def generate_font(body: FontGenerateRequest) -> FontGenerateResponse:
     Raises:
         404: If session_id is not recognised.
     """
-    # TODO: Implement font generation (Milestone 5)
-    raise HTTPException(status_code=501, detail="Font generation not yet implemented.")
+    session_dir = _UPLOADS_DIR / body.session_id
+    if not session_dir.exists():
+        raise HTTPException(status_code=404, detail=f"Session '{body.session_id}' not found.")
+
+    glyphs_dir = session_dir / "glyphs"
+    if not glyphs_dir.exists() or not any(glyphs_dir.iterdir()):
+        raise HTTPException(
+            status_code=400,
+            detail="No glyphs found. Call /api/glyphs/{session_id} first to extract glyphs.",
+        )
+
+    # Build glyph map: character -> image path
+    # Glyph files are named like "0001_a_1.png" — extract the character from the label
+    glyph_map: dict[str, Path] = {}
+    for png in sorted(glyphs_dir.glob("*.png")):
+        # Label is between first underscore and last underscore
+        parts = png.stem.split("_", 1)
+        if len(parts) < 2:
+            continue
+        label = parts[1]
+        # For variant labels like "a_1", take the first character
+        if "_" in label:
+            char = label.split("_")[0]
+        else:
+            char = label
+        # Only take the first variant of each character
+        if char and len(char) == 1 and char not in glyph_map:
+            glyph_map[char] = png
+
+    if not glyph_map:
+        raise HTTPException(status_code=400, detail="No valid glyphs could be mapped to characters.")
+
+    _OUTPUTS_DIR.mkdir(parents=True, exist_ok=True)
+    font_path = _OUTPUTS_DIR / f"{body.session_id}.ttf"
+
+    meta = FontMetadata(
+        family_name=body.family_name,
+        designer=body.designer,
+    )
+
+    builder = FontBuilder()
+    builder.build_ttf(glyph_map, font_path, metadata=meta)
+
+    return FontGenerateResponse(
+        download_url=f"/api/fonts/{body.session_id}.ttf",
+        glyph_count=len(glyph_map),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Routes — Static file serving
+# ---------------------------------------------------------------------------
+
+
+@app.get("/api/renders/{filename}", tags=["render"])
+async def get_render_image(filename: str) -> FileResponse:
+    """Serve a rendered handwriting image."""
+    safe_name = Path(filename).name
+    path = _OUTPUTS_DIR / safe_name
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="Render not found.")
+    return FileResponse(path=str(path), media_type="image/png")
+
+
+@app.get("/api/fonts/{filename}", tags=["font"])
+async def get_font_file(filename: str) -> FileResponse:
+    """Serve a generated font file."""
+    safe_name = Path(filename).name
+    path = _OUTPUTS_DIR / safe_name
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="Font not found.")
+    return FileResponse(
+        path=str(path),
+        media_type="font/ttf",
+        filename=safe_name,
+    )
