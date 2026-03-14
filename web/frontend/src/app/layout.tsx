@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
+import { Home, FileText, Upload, CheckSquare, Wand2 } from "lucide-react";
 import { ToastProvider } from "@/components/toast";
 import "./globals.css";
 
@@ -21,12 +22,12 @@ export const metadata: Metadata = {
 };
 
 const navLinks = [
-  { href: "/", label: "Home" },
-  { href: "/worksheet", label: "Worksheet" },
-  { href: "/upload", label: "Upload" },
-  { href: "/review", label: "Review" },
-  { href: "/generate", label: "Generate" },
-] as const;
+  { href: "/", label: "Home", icon: Home },
+  { href: "/worksheet", label: "Worksheet", icon: FileText },
+  { href: "/upload", label: "Upload", icon: Upload },
+  { href: "/review", label: "Review", icon: CheckSquare },
+  { href: "/generate", label: "Generate", icon: Wand2 },
+];
 
 export default function RootLayout({
   children,
@@ -54,12 +55,13 @@ export default function RootLayout({
                 Handwright
               </Link>
               <div className="flex items-center gap-1 overflow-x-auto">
-                {navLinks.map(({ href, label }) => (
+                {navLinks.map(({ href, label, icon: Icon }) => (
                   <Link
                     key={href}
                     href={href}
-                    className="px-3 py-1.5 rounded-md text-sm text-gray-300 hover:text-white hover:bg-gray-800 transition-colors whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-900"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm text-gray-300 hover:text-white hover:bg-gray-800 transition-colors whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-900"
                   >
+                    <Icon className="w-3.5 h-3.5" />
                     {label}
                   </Link>
                 ))}

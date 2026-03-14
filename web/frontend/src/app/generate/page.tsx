@@ -4,22 +4,7 @@ import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { ProgressStepper } from "@/components/progress-stepper";
 import { useToast } from "@/components/toast";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-
-interface FontGenerateResponse {
-  download_url: string;
-  woff2_url: string;
-  css_snippet: string;
-  glyph_count: number;
-  variant_count: number;
-}
-
-interface RenderResponse {
-  image_url: string;
-  width: number;
-  height: number;
-}
+import { generateFont, previewText, API_BASE_URL } from "@/lib/api";
 
 /* ------------------------------------------------------------------ */
 /* Main Content                                                        */
@@ -81,22 +66,7 @@ function GeneratePageContent() {
     setVariantCount(null);
 
     try {
-      const response = await fetch(`${API_URL}/api/font/generate`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          session_id: sessionId,
-          family_name: familyName,
-          designer: designer || undefined,
-        }),
-      });
-
-      if (!response.ok) {
-        const body = await response.text().catch(() => "");
-        throw new Error(body || response.statusText);
-      }
-
-      const data = (await response.json()) as FontGenerateResponse;
+      const data = await generateFont(sessionId, familyName, designer || undefined);
       setDownloadUrl(data.download_url);
       setWoff2Url(data.woff2_url);
       setCssSnippet(data.css_snippet);
@@ -116,7 +86,7 @@ function GeneratePageContent() {
   const handleDownloadFont = () => {
     if (!downloadUrl) return;
     const a = document.createElement("a");
-    a.href = `${API_URL}${downloadUrl}`;
+    a.href = `${API_BASE_URL}${downloadUrl}`;
     a.download = `${familyName.replace(/\s+/g, "_")}.ttf`;
     a.click();
   };
@@ -124,7 +94,7 @@ function GeneratePageContent() {
   const handleDownloadWoff2 = () => {
     if (!woff2Url) return;
     const a = document.createElement("a");
-    a.href = `${API_URL}${woff2Url}`;
+    a.href = `${API_BASE_URL}${woff2Url}`;
     a.download = `${familyName.replace(/\s+/g, "_")}.woff2`;
     a.click();
   };
@@ -136,23 +106,12 @@ function GeneratePageContent() {
     setRenderedImageUrl(null);
 
     try {
-      const response = await fetch(`${API_URL}/api/render`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          text: renderText,
-          session_id: sessionId,
-          font_size: fontSize,
-          line_spacing: 1.5,
-        }),
+      const data = await previewText({
+        text: renderText,
+        session_id: sessionId,
+        font_size: fontSize,
+        line_spacing: 1.5,
       });
-
-      if (!response.ok) {
-        const body = await response.text().catch(() => "");
-        throw new Error(body || response.statusText);
-      }
-
-      const data = (await response.json()) as RenderResponse;
       setRenderedImageUrl(data.image_url);
     } catch (err) {
       setRenderError(
@@ -168,7 +127,7 @@ function GeneratePageContent() {
     const a = document.createElement("a");
     a.href = renderedImageUrl.startsWith("http")
       ? renderedImageUrl
-      : `${API_URL}${renderedImageUrl}`;
+      : `${API_BASE_URL}${renderedImageUrl}`;
     a.download = "rendered-note.png";
     a.click();
   };
@@ -542,7 +501,7 @@ function GeneratePageContent() {
                   src={
                     renderedImageUrl.startsWith("http")
                       ? renderedImageUrl
-                      : `${API_URL}${renderedImageUrl}`
+                      : `${API_BASE_URL}${renderedImageUrl}`
                   }
                   alt="Rendered handwriting preview"
                   className="w-full rounded-lg"

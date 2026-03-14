@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Pencil, Camera, Type } from "lucide-react";
 
 const steps = [
   {
@@ -6,23 +7,23 @@ const steps = [
     title: "Write",
     description:
       "Download and print a worksheet. Fill in every letter, number, and punctuation mark in your natural handwriting.",
-    icon: "✏️",
+    icon: Pencil,
   },
   {
     number: "2",
     title: "Upload",
     description:
       "Photograph or scan your completed worksheet and upload it here. We handle the rest — no special equipment needed.",
-    icon: "📷",
+    icon: Camera,
   },
   {
     number: "3",
     title: "Generate",
     description:
       "We extract each glyph, let you review and adjust, then package everything as a downloadable font file.",
-    icon: "🔤",
+    icon: Type,
   },
-] as const;
+];
 
 export default function HomePage() {
   return (
@@ -75,7 +76,7 @@ export default function HomePage() {
                 key={step.number}
                 className="flex flex-col items-center text-center rounded-xl border border-gray-800 bg-gray-900 p-8 hover:border-indigo-800 transition-colors"
               >
-                <span className="text-4xl mb-4">{step.icon}</span>
+                <step.icon className="w-8 h-8 text-indigo-400 mb-4" />
                 <div className="flex items-center gap-2 mb-3">
                   <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold">
                     {step.number}

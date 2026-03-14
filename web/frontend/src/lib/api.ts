@@ -1,5 +1,5 @@
 /** Base URL for the Handwright FastAPI backend. */
-const BASE_URL =
+export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 /** A single extracted glyph returned by the backend. */
@@ -83,7 +83,7 @@ async function expectOk(response: Response): Promise<Response> {
 export async function generateWorksheet(
   includeSymbols = false,
 ): Promise<Blob> {
-  const url = new URL(`${BASE_URL}/api/worksheet/generate`);
+  const url = new URL(`${API_BASE_URL}/api/worksheet/generate`);
   if (includeSymbols) url.searchParams.set("include_symbols", "true");
 
   const response = await fetch(url.toString(), { method: "POST" });
@@ -99,7 +99,7 @@ export async function uploadImage(file: File): Promise<UploadResponse> {
   const form = new FormData();
   form.append("file", file);
 
-  const response = await fetch(`${BASE_URL}/api/upload`, {
+  const response = await fetch(`${API_BASE_URL}/api/upload`, {
     method: "POST",
     body: form,
   });
@@ -113,7 +113,7 @@ export async function uploadImage(file: File): Promise<UploadResponse> {
  */
 export async function getGlyphs(sessionId: string): Promise<GlyphsResponse> {
   const response = await fetch(
-    `${BASE_URL}/api/glyphs/${encodeURIComponent(sessionId)}`,
+    `${API_BASE_URL}/api/glyphs/${encodeURIComponent(sessionId)}`,
   );
   await expectOk(response);
   return response.json() as Promise<GlyphsResponse>;
@@ -126,7 +126,7 @@ export async function getGlyphs(sessionId: string): Promise<GlyphsResponse> {
 export async function renderNote(
   params: RenderParams,
 ): Promise<RenderResponse> {
-  const response = await fetch(`${BASE_URL}/api/render`, {
+  const response = await fetch(`${API_BASE_URL}/api/render`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(params),
@@ -145,7 +145,7 @@ export async function previewText(params: {
   font_size?: number;
   line_spacing?: number;
 }): Promise<RenderResponse> {
-  const response = await fetch(`${BASE_URL}/api/render`, {
+  const response = await fetch(`${API_BASE_URL}/api/render`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -168,7 +168,7 @@ export async function generateFont(
   familyName: string,
   designer?: string,
 ): Promise<FontGenerateResponse> {
-  const response = await fetch(`${BASE_URL}/api/font/generate`, {
+  const response = await fetch(`${API_BASE_URL}/api/font/generate`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({

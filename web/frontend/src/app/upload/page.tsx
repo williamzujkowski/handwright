@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { uploadImage } from "@/lib/api";
 import { ProgressStepper } from "@/components/progress-stepper";
 import { useToast } from "@/components/toast";
+import { UploadCloud, Loader2 } from "lucide-react";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 const ALLOWED_EXTENSIONS = new Set([".jpg", ".jpeg", ".png", ".pdf", ".heic"]);
@@ -118,11 +119,11 @@ export default function UploadPage() {
         role="button"
         aria-label="Upload worksheet image"
       >
-        <div className="w-16 h-16 rounded-full bg-gray-800 flex items-center justify-center text-3xl">
+        <div className="w-16 h-16 rounded-full bg-gray-800 flex items-center justify-center">
           {uploading ? (
-            <span className="animate-spin">&#9696;</span>
+            <Loader2 className="w-8 h-8 text-indigo-400 animate-spin" />
           ) : (
-            <span>&#128193;</span>
+            <UploadCloud className="w-8 h-8 text-indigo-400" />
           )}
         </div>
         <div>

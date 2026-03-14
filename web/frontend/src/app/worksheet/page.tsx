@@ -4,6 +4,7 @@ import { useState } from "react";
 import { generateWorksheet } from "@/lib/api";
 import { ProgressStepper } from "@/components/progress-stepper";
 import { useToast } from "@/components/toast";
+import { FileText } from "lucide-react";
 
 export default function WorksheetPage() {
   const [loading, setLoading] = useState(false);
@@ -54,8 +55,8 @@ export default function WorksheetPage() {
         onSubmit={(e) => { e.preventDefault(); void handleGenerate(); }}
         className="rounded-xl border border-gray-800 bg-gray-900 p-10 flex flex-col items-center gap-6 text-center"
       >
-        <div className="w-16 h-16 rounded-full bg-gray-800 flex items-center justify-center text-3xl">
-          📄
+        <div className="w-16 h-16 rounded-full bg-gray-800 flex items-center justify-center">
+          <FileText className="w-8 h-8 text-indigo-400" />
         </div>
         <div>
           <p className="text-gray-300 font-medium mb-1">

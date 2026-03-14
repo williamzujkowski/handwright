@@ -1,9 +1,8 @@
 name: Release
 
 on:
-  push:
-    tags:
-      - "v*.*.*"
+  release:
+    types: [created]
 
 permissions:
   contents: write
@@ -23,11 +22,11 @@ jobs:
 
     steps:
       # ── test-backend ──────────────────────────────────────────────────────
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Set up Python
         if: matrix.job != 'test-frontend'
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
           cache: pip
@@ -54,7 +53,7 @@ jobs:
         with:
           version: 10
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         if: matrix.job == 'test-frontend'
         with:
           node-version: "22"
@@ -101,10 +100,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       # ── Python wheel ──────────────────────────────────────────────────────
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
           cache: pip
@@ -114,7 +113,7 @@ jobs:
 
       # ── Docker images ─────────────────────────────────────────────────────
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -125,23 +124,21 @@ jobs:
 
       - name: Push api image
         run: |
-          docker tag handwright-api ghcr.io/${{ github.repository }}/api:${{ github.ref_name }}
+          docker tag handwright-api ghcr.io/${{ github.repository }}/api:${{ github.event.release.tag_name }}
           docker tag handwright-api ghcr.io/${{ github.repository }}/api:latest
-          docker push ghcr.io/${{ github.repository }}/api:${{ github.ref_name }}
+          docker push ghcr.io/${{ github.repository }}/api:${{ github.event.release.tag_name }}
           docker push ghcr.io/${{ github.repository }}/api:latest
 
       - name: Push frontend image
         run: |
-          docker tag handwright-frontend ghcr.io/${{ github.repository }}/frontend:${{ github.ref_name }}
+          docker tag handwright-frontend ghcr.io/${{ github.repository }}/frontend:${{ github.event.release.tag_name }}
           docker tag handwright-frontend ghcr.io/${{ github.repository }}/frontend:latest
-          docker push ghcr.io/${{ github.repository }}/frontend:${{ github.ref_name }}
+          docker push ghcr.io/${{ github.repository }}/frontend:${{ github.event.release.tag_name }}
           docker push ghcr.io/${{ github.repository }}/frontend:latest
 
       # ── GitHub Release ────────────────────────────────────────────────────
-      - name: Create GitHub Release
+      - name: Upload wheel to GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create ${{ github.ref_name }} dist/*.whl \
-            --generate-notes \
-            --title "Handwright ${{ github.ref_name }}"
+          gh release upload ${{ github.event.release.tag_name }} dist/*.whl --clobber
