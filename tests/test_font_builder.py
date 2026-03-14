@@ -57,9 +57,7 @@ def glyph_map(glyph_dir: Path) -> dict[str, Path]:
 
 
 class TestFontBuilder:
-    def test_build_creates_ttf_file(
-        self, tmp_path: Path, glyph_map: dict[str, Path]
-    ) -> None:
+    def test_build_creates_ttf_file(self, tmp_path: Path, glyph_map: dict[str, Path]) -> None:
         """build_ttf produces a valid TTF file on disk."""
         output = tmp_path / "out.ttf"
         builder = FontBuilder()
@@ -103,9 +101,7 @@ class TestFontBuilder:
         assert "H" in glyph_order
         font.close()
 
-    def test_built_font_metadata(
-        self, tmp_path: Path, glyph_map: dict[str, Path]
-    ) -> None:
+    def test_built_font_metadata(self, tmp_path: Path, glyph_map: dict[str, Path]) -> None:
         """Custom metadata is reflected in the font name table."""
         output = tmp_path / "out.ttf"
         meta = FontMetadata(

@@ -82,9 +82,7 @@ class HandwritingRenderer:
         lines = text.split("\n")
 
         # Calculate image height
-        total_height = (
-            2 * options.margin + len(lines) * line_height + options.font_size
-        )
+        total_height = 2 * options.margin + len(lines) * line_height + options.font_size
         total_height = max(total_height, options.margin * 2 + line_height)
 
         img = Image.new("RGB", (options.width, total_height), options.background_color)

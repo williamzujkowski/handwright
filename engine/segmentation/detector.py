@@ -149,7 +149,7 @@ class WorksheetDetector:
             source=image_path,
             corrected_image_path=corrected_path,
             qr_metadata=qr_metadata,
-            cell_labels=cell_labels[:len(boxes)],
+            cell_labels=cell_labels[: len(boxes)],
         )
 
     # ------------------------------------------------------------------

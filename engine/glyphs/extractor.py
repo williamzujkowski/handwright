@@ -69,8 +69,7 @@ class GlyphExtractor:
 
         if labels is not None and len(labels) != len(boxes):
             raise ValueError(
-                f"labels length ({len(labels)}) does not match "
-                f"boxes length ({len(boxes)})"
+                f"labels length ({len(labels)}) does not match boxes length ({len(boxes)})"
             )
 
         image = cv2.imread(str(image_path))

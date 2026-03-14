@@ -28,9 +28,7 @@ def font_path() -> Path:
 class TestHandwritingRenderer:
     """Tests for HandwritingRenderer."""
 
-    def test_render_creates_png(
-        self, font_path: Path, tmp_path: Path
-    ) -> None:
+    def test_render_creates_png(self, font_path: Path, tmp_path: Path) -> None:
         renderer = HandwritingRenderer()
         options = RenderOptions(font_path=font_path, font_size=32)
         output = tmp_path / "test.png"
@@ -40,9 +38,7 @@ class TestHandwritingRenderer:
         assert result.exists()
         assert result.suffix == ".png"
 
-    def test_render_output_is_valid_image(
-        self, font_path: Path, tmp_path: Path
-    ) -> None:
+    def test_render_output_is_valid_image(self, font_path: Path, tmp_path: Path) -> None:
         renderer = HandwritingRenderer()
         options = RenderOptions(font_path=font_path)
         output = tmp_path / "test.png"
@@ -54,9 +50,7 @@ class TestHandwritingRenderer:
         assert img.width > 0
         assert img.height > 0
 
-    def test_render_multiline(
-        self, font_path: Path, tmp_path: Path
-    ) -> None:
+    def test_render_multiline(self, font_path: Path, tmp_path: Path) -> None:
         renderer = HandwritingRenderer()
         options = RenderOptions(font_path=font_path)
         output = tmp_path / "multi.png"
@@ -67,9 +61,7 @@ class TestHandwritingRenderer:
         # Multi-line should be taller than single-line
         assert img.height > options.font_size * 2
 
-    def test_render_empty_text_raises(
-        self, font_path: Path, tmp_path: Path
-    ) -> None:
+    def test_render_empty_text_raises(self, font_path: Path, tmp_path: Path) -> None:
         renderer = HandwritingRenderer()
         options = RenderOptions(font_path=font_path)
 
@@ -83,9 +75,7 @@ class TestHandwritingRenderer:
         with pytest.raises(FileNotFoundError):
             renderer.render("Hello", options, tmp_path / "err.png")
 
-    def test_render_deterministic_jitter(
-        self, font_path: Path, tmp_path: Path
-    ) -> None:
+    def test_render_deterministic_jitter(self, font_path: Path, tmp_path: Path) -> None:
         """Same text should produce identical output (deterministic RNG)."""
         renderer = HandwritingRenderer()
         options = RenderOptions(font_path=font_path, font_size=32)
@@ -97,9 +87,7 @@ class TestHandwritingRenderer:
 
         assert out1.read_bytes() == out2.read_bytes()
 
-    def test_render_custom_colors(
-        self, font_path: Path, tmp_path: Path
-    ) -> None:
+    def test_render_custom_colors(self, font_path: Path, tmp_path: Path) -> None:
         renderer = HandwritingRenderer()
         options = RenderOptions(
             font_path=font_path,

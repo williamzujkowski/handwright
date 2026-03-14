@@ -73,9 +73,7 @@ def _image_to_contours(
     _, binary = cv2.threshold(alpha, 127, 255, cv2.THRESH_BINARY)
 
     # Find contours
-    contours_cv, _ = cv2.findContours(
-        binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
-    )
+    contours_cv, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
     # Scale factors: map image pixels to font units
     scale_x = units_per_em / img_width
@@ -141,9 +139,7 @@ class FontBuilder:
         # Validate all image paths exist before doing any work
         for char, img_path in glyph_map.items():
             if not img_path.exists():
-                raise FileNotFoundError(
-                    f"Glyph image not found for '{char}': {img_path}"
-                )
+                raise FileNotFoundError(f"Glyph image not found for '{char}': {img_path}")
 
         if metadata is None:
             metadata = FontMetadata(family_name="Handwright")
@@ -178,9 +174,7 @@ class FontBuilder:
         fb.setupCharacterMap(char_map)
 
         # Build glyf table data
-        fb.setupGlyf(
-            _build_glyf_dict(glyph_names, glyph_data, fb)
-        )
+        fb.setupGlyf(_build_glyf_dict(glyph_names, glyph_data, fb))
 
         # Horizontal metrics: {glyph_name: (advance_width, lsb)}
         metrics: dict[str, tuple[int, int]] = {}

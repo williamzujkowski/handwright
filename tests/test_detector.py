@@ -64,24 +64,18 @@ class TestWorksheetDetector:
         with pytest.raises(FileNotFoundError):
             detector.detect(tmp_path / "nonexistent.png")
 
-    def test_detect_returns_detection_result(
-        self, simple_image_with_markers: Path
-    ) -> None:
+    def test_detect_returns_detection_result(self, simple_image_with_markers: Path) -> None:
         detector = WorksheetDetector()
         result = detector.detect(simple_image_with_markers)
         assert isinstance(result, DetectionResult)
 
-    def test_detect_finds_cells(
-        self, simple_image_with_markers: Path
-    ) -> None:
+    def test_detect_finds_cells(self, simple_image_with_markers: Path) -> None:
         detector = WorksheetDetector()
         result = detector.detect(simple_image_with_markers)
         # Should find at least some cells from the grid layout
         assert len(result.boxes) > 0
 
-    def test_detect_boxes_are_valid_tuples(
-        self, simple_image_with_markers: Path
-    ) -> None:
+    def test_detect_boxes_are_valid_tuples(self, simple_image_with_markers: Path) -> None:
         detector = WorksheetDetector()
         result = detector.detect(simple_image_with_markers)
         for box in result.boxes:

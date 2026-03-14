@@ -353,7 +353,9 @@ async def generate_font(body: FontGenerateRequest) -> FontGenerateResponse:
             glyph_map[char] = png
 
     if not glyph_map:
-        raise HTTPException(status_code=400, detail="No valid glyphs could be mapped to characters.")
+        raise HTTPException(
+            status_code=400, detail="No valid glyphs could be mapped to characters."
+        )
 
     _OUTPUTS_DIR.mkdir(parents=True, exist_ok=True)
     font_path = _OUTPUTS_DIR / f"{body.session_id}.ttf"

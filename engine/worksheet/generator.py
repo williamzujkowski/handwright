@@ -162,9 +162,7 @@ class WorksheetGenerator:
         c.save()
         return output_path
 
-    def _draw_page(
-        self, c: canvas.Canvas, page: PageSpec, page_w: float, page_h: float
-    ) -> None:
+    def _draw_page(self, c: canvas.Canvas, page: PageSpec, page_w: float, page_h: float) -> None:
         """Draw a single worksheet page."""
         # Corner alignment markers
         self._draw_alignment_markers(c, page_w, page_h)
@@ -232,9 +230,7 @@ class WorksheetGenerator:
             c.drawCentredString(x + CELL_SIZE / 2, y - CELL_SIZE + CELL_SIZE * 0.35, cell.char)
             c.setFillColorRGB(0, 0, 0)
 
-    def _draw_alignment_markers(
-        self, c: canvas.Canvas, page_w: float, page_h: float
-    ) -> None:
+    def _draw_alignment_markers(self, c: canvas.Canvas, page_w: float, page_h: float) -> None:
         """Draw filled square markers at all four corners."""
         c.setFillColorRGB(0, 0, 0)
         positions = [
@@ -246,9 +242,7 @@ class WorksheetGenerator:
         for mx, my in positions:
             c.rect(mx, my, MARKER_SIZE, MARKER_SIZE, fill=1)
 
-    def _draw_qr_code(
-        self, c: canvas.Canvas, page: PageSpec, page_w: float, page_h: float
-    ) -> None:
+    def _draw_qr_code(self, c: canvas.Canvas, page: PageSpec, page_w: float, page_h: float) -> None:
         """Draw QR code with worksheet metadata."""
         metadata = self.config.to_metadata()
         metadata["page"] = page.page_number
@@ -259,7 +253,9 @@ class WorksheetGenerator:
         cell_map = [{"c": cell.char, "v": cell.variant, "l": cell.label} for cell in page.cells]
         metadata["cells"] = cell_map
 
-        qr = qrcode.QRCode(version=None, error_correction=qrcode.constants.ERROR_CORRECT_M, box_size=10)
+        qr = qrcode.QRCode(
+            version=None, error_correction=qrcode.constants.ERROR_CORRECT_M, box_size=10
+        )
         qr.add_data(json.dumps(metadata, separators=(",", ":")))
         qr.make(fit=True)
         qr_img = qr.make_image(fill_color="black", back_color="white")

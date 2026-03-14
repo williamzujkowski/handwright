@@ -35,9 +35,7 @@ def sample_image(tmp_path: Path) -> Path:
 class TestGlyphExtractor:
     """Tests for GlyphExtractor."""
 
-    def test_extract_returns_glyph_list(
-        self, sample_image: Path, tmp_path: Path
-    ) -> None:
+    def test_extract_returns_glyph_list(self, sample_image: Path, tmp_path: Path) -> None:
         extractor = GlyphExtractor()
         boxes = [(50, 50, 100, 100), (200, 50, 100, 100)]
         labels = ["X_1", "O_1"]
@@ -48,9 +46,7 @@ class TestGlyphExtractor:
         assert len(glyphs) == 2
         assert all(isinstance(g, Glyph) for g in glyphs)
 
-    def test_extract_creates_output_files(
-        self, sample_image: Path, tmp_path: Path
-    ) -> None:
+    def test_extract_creates_output_files(self, sample_image: Path, tmp_path: Path) -> None:
         extractor = GlyphExtractor()
         boxes = [(50, 50, 100, 100)]
         output_dir = tmp_path / "glyphs"
@@ -60,9 +56,7 @@ class TestGlyphExtractor:
         assert glyphs[0].image_path.exists()
         assert glyphs[0].image_path.suffix == ".png"
 
-    def test_extract_with_sequential_labels(
-        self, sample_image: Path, tmp_path: Path
-    ) -> None:
+    def test_extract_with_sequential_labels(self, sample_image: Path, tmp_path: Path) -> None:
         extractor = GlyphExtractor()
         boxes = [(50, 50, 100, 100), (200, 50, 100, 100)]
         output_dir = tmp_path / "glyphs"
@@ -72,9 +66,7 @@ class TestGlyphExtractor:
         assert glyphs[0].label == "0"
         assert glyphs[1].label == "1"
 
-    def test_extract_label_count_mismatch_raises(
-        self, sample_image: Path, tmp_path: Path
-    ) -> None:
+    def test_extract_label_count_mismatch_raises(self, sample_image: Path, tmp_path: Path) -> None:
         extractor = GlyphExtractor()
         boxes = [(50, 50, 100, 100)]
         labels = ["a", "b"]  # mismatched count
@@ -91,9 +83,7 @@ class TestGlyphExtractor:
                 tmp_path / "out",
             )
 
-    def test_extracted_glyph_has_dimensions(
-        self, sample_image: Path, tmp_path: Path
-    ) -> None:
+    def test_extracted_glyph_has_dimensions(self, sample_image: Path, tmp_path: Path) -> None:
         extractor = GlyphExtractor()
         boxes = [(50, 50, 100, 100)]
         output_dir = tmp_path / "glyphs"
