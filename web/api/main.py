@@ -10,6 +10,7 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from pathlib import Path
 
+import cv2
 from fastapi import FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
@@ -295,17 +296,28 @@ async def get_glyphs(session_id: str) -> dict[str, object]:
     loop = asyncio.get_event_loop()
 
     detector = WorksheetDetector()
-    result = await loop.run_in_executor(None, detector.detect, image_path)
+    try:
+        result = await loop.run_in_executor(None, detector.detect, image_path)
+    except (ValueError, FileNotFoundError) as exc:
+        logger.warning("Detection failed for session %s: %s", session_id, exc)
+        return {"session_id": session_id, "glyph_count": 0, "glyphs": []}
+
+    if not result.boxes:
+        return {"session_id": session_id, "glyph_count": 0, "glyphs": []}
 
     extractor = GlyphExtractor()
-    glyphs = await loop.run_in_executor(
-        None,
-        extractor.extract,
-        result.corrected_image_path or image_path,
-        result.boxes,
-        glyphs_dir,
-        result.cell_labels if result.cell_labels else None,
-    )
+    try:
+        glyphs = await loop.run_in_executor(
+            None,
+            extractor.extract,
+            result.corrected_image_path or image_path,
+            result.boxes,
+            glyphs_dir,
+            result.cell_labels if result.cell_labels else None,
+        )
+    except (ValueError, FileNotFoundError, cv2.error) as exc:
+        logger.warning("Extraction failed for session %s: %s", session_id, exc)
+        return {"session_id": session_id, "glyph_count": 0, "glyphs": []}
 
     return {
         "session_id": session_id,
