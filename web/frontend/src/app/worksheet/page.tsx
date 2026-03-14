@@ -63,8 +63,9 @@ export default function WorksheetPage() {
             Handwriting Worksheet (PDF)
           </p>
           <p className="text-gray-500 text-sm">
-            The PDF includes all 96 printable ASCII characters laid out in
-            clearly defined boxes with alignment markers.
+            The multi-page PDF includes all letters (a–z, A–Z), digits (0–9),
+            and punctuation — each with multiple handwriting variants for
+            natural variation. Print <strong className="text-gray-400">all pages</strong>.
           </p>
         </div>
 
@@ -95,7 +96,13 @@ export default function WorksheetPage() {
         )}
       </form>
 
-      <div className="mt-8 rounded-lg border border-gray-800 bg-gray-900/50 p-6">
+      <div className="mt-4 p-3 rounded-lg bg-indigo-950/30 border border-indigo-800/40 text-sm text-indigo-300">
+        <strong>Important:</strong> The worksheet is a multi-page PDF (typically 6 pages).
+        You must print and fill in <strong>all pages</strong> — lowercase, uppercase, digits, and
+        punctuation — for a complete font.
+      </div>
+
+      <div className="mt-6 rounded-lg border border-gray-800 bg-gray-900/50 p-6">
         <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wide mb-3">
           Instructions
         </h2>

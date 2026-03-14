@@ -46,6 +46,7 @@ class CellSpec:
     char: str
     variant: int
     label: str
+    group: str = ""  # Section group: "lowercase", "uppercase", "digits", "punctuation"
 
 
 @dataclass
@@ -74,32 +75,44 @@ class WorksheetConfig:
         # Lowercase: 3 variants each
         for char in LOWERCASE:
             for v in range(1, LOWERCASE_VARIANTS + 1):
-                all_cells.append(CellSpec(char=char, variant=v, label=f"{char}_{v}"))
+                all_cells.append(
+                    CellSpec(char=char, variant=v, label=f"{char}_{v}", group="lowercase")
+                )
 
         # Uppercase: 2 variants each
         for char in UPPERCASE:
             for v in range(1, UPPERCASE_VARIANTS + 1):
-                all_cells.append(CellSpec(char=char, variant=v, label=f"{char}_{v}"))
+                all_cells.append(
+                    CellSpec(char=char, variant=v, label=f"{char}_{v}", group="uppercase")
+                )
 
         # Digits: 2 variants each
         for char in DIGITS:
             for v in range(1, DIGIT_VARIANTS + 1):
-                all_cells.append(CellSpec(char=char, variant=v, label=f"{char}_{v}"))
+                all_cells.append(
+                    CellSpec(char=char, variant=v, label=f"{char}_{v}", group="digits")
+                )
 
         # Punctuation: 1 variant each
         for char in PUNCTUATION:
-            all_cells.append(CellSpec(char=char, variant=1, label=f"p_{PUNCTUATION.index(char)}"))
+            all_cells.append(
+                CellSpec(
+                    char=char, variant=1, label=f"p_{PUNCTUATION.index(char)}", group="punctuation"
+                )
+            )
 
         # Extended symbols (optional)
         if self.include_symbols:
             for char in SYMBOLS:
                 for v in range(1, SYMBOL_VARIANTS + 1):
                     all_cells.append(
-                        CellSpec(char=char, variant=v, label=f"s_{SYMBOLS.index(char)}")
+                        CellSpec(
+                            char=char, variant=v, label=f"s_{SYMBOLS.index(char)}", group="symbols"
+                        )
                     )
 
         # Space sampling cell
-        all_cells.append(CellSpec(char=" ", variant=1, label="space"))
+        all_cells.append(CellSpec(char=" ", variant=1, label="space", group="punctuation"))
 
         # Split into pages
         cells_per_page = self.cols_per_row * self._rows_per_page()
@@ -185,13 +198,47 @@ class WorksheetGenerator:
         # QR code (top right)
         self._draw_qr_code(c, page, page_w, page_h)
 
+        # Section header labels
+        group_labels = {
+            "lowercase": "Lowercase (a–z) — 3 variants each",
+            "uppercase": "Uppercase (A–Z) — 2 variants each",
+            "digits": "Digits (0–9) — 2 variants each",
+            "punctuation": "Punctuation — 1 variant each",
+            "symbols": "Extended Symbols — 1 variant each",
+        }
+
+        # Draw section header at top of page if this page starts a new group
+        # or continues the previous page's group
+        first_group = page.cells[0].group if page.cells else ""
+        subtitle = group_labels.get(first_group, "")
+        if subtitle:
+            c.setFont("Helvetica", 8)
+            c.setFillColorRGB(0.4, 0.4, 0.6)
+            c.drawString(MARGIN_X + MARKER_SIZE + 5 * mm, page_h - MARGIN_Y - 14 * mm, subtitle)
+            c.setFillColorRGB(0, 0, 0)
+
         # Character grid
         grid_top = page_h - MARGIN_Y - 18 * mm
         grid_left = MARGIN_X + MARKER_SIZE + 2 * mm
 
         row = 0
         col = 0
+        current_group = first_group
         for cell in page.cells:
+            # If group changes mid-page, insert a section label
+            if cell.group != current_group and cell.group:
+                if col > 0:
+                    col = 0
+                    row += 1
+                label = group_labels.get(cell.group, "")
+                if label:
+                    label_y = grid_top - row * (CELL_SIZE + LABEL_HEIGHT + 3 * mm) + 2 * mm
+                    c.setFont("Helvetica-Bold", 7)
+                    c.setFillColorRGB(0.4, 0.4, 0.6)
+                    c.drawString(grid_left, label_y, label)
+                    c.setFillColorRGB(0, 0, 0)
+                    row += 1
+                current_group = cell.group
             x = grid_left + col * (CELL_SIZE + 2 * mm)
             y = grid_top - row * (CELL_SIZE + LABEL_HEIGHT + 3 * mm)
 
@@ -228,8 +275,8 @@ class WorksheetGenerator:
         c.setFillColorRGB(0.5, 0.5, 0.5)
 
         display_label = cell.char if cell.char.strip() else "SPC"
-        if cell.variant > 1 or cell.char in LOWERCASE:
-            display_label = f"{display_label} ({cell.variant})"
+        # Always show variant number for consistency
+        display_label = f"{display_label} ({cell.variant})"
 
         c.drawCentredString(x + CELL_SIZE / 2, y - CELL_SIZE - LABEL_HEIGHT + 1 * mm, display_label)
         c.setFillColorRGB(0, 0, 0)  # Reset fill
