@@ -11,6 +11,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 
+from engine.glyphs.extractor import GlyphExtractor
+from engine.segmentation.detector import WorksheetDetector
 from engine.worksheet.generator import WorksheetGenerator
 
 # ---------------------------------------------------------------------------
@@ -175,8 +177,61 @@ async def get_glyphs(session_id: str) -> dict[str, object]:
     if not session_dir.exists():
         raise HTTPException(status_code=404, detail=f"Session '{session_id}' not found.")
 
-    # TODO: Implement glyph extraction pipeline (Milestone 2)
-    raise HTTPException(status_code=501, detail="Glyph extraction not yet implemented.")
+    # Find the uploaded image
+    image_path = None
+    for ext in [".png", ".jpg", ".jpeg", ".pdf", ".heic"]:
+        candidate = session_dir / f"original{ext}"
+        if candidate.exists():
+            image_path = candidate
+            break
+
+    if image_path is None:
+        raise HTTPException(status_code=404, detail="No uploaded image found for this session.")
+
+    # Run detection + extraction pipeline
+    glyphs_dir = session_dir / "glyphs"
+
+    detector = WorksheetDetector()
+    result = detector.detect(image_path)
+
+    extractor = GlyphExtractor()
+    glyphs = extractor.extract(
+        result.corrected_image_path or image_path,
+        result.boxes,
+        glyphs_dir,
+        result.cell_labels if result.cell_labels else None,
+    )
+
+    return {
+        "session_id": session_id,
+        "glyph_count": len(glyphs),
+        "glyphs": [
+            {
+                "label": g.label,
+                "image_url": f"/api/glyphs/{session_id}/images/{g.image_path.name}",
+                "width": g.width,
+                "height": g.height,
+            }
+            for g in glyphs
+        ],
+    }
+
+
+@app.get("/api/glyphs/{session_id}/images/{filename}", tags=["glyphs"])
+async def get_glyph_image(session_id: str, filename: str) -> FileResponse:
+    """Serve an individual extracted glyph image.
+
+    Raises:
+        404: If session or glyph image not found.
+    """
+    # Sanitize filename to prevent path traversal
+    safe_name = Path(filename).name
+    image_path = _UPLOADS_DIR / session_id / "glyphs" / safe_name
+
+    if not image_path.exists() or not image_path.is_file():
+        raise HTTPException(status_code=404, detail="Glyph image not found.")
+
+    return FileResponse(path=str(image_path), media_type="image/png")
 
 
 # ---------------------------------------------------------------------------

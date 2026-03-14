@@ -88,22 +88,27 @@ async def test_get_glyphs_nonexistent_session_returns_404() -> None:
 
 
 @pytest.mark.asyncio
-async def test_get_glyphs_valid_session_returns_501() -> None:
-    """Upload a file to create a valid session, then request glyphs (not yet implemented)."""
+async def test_get_glyphs_valid_session_extracts_glyphs() -> None:
+    """Upload a worksheet-like image, then request glyphs."""
+    # Create a larger image that the detector can process (simulated scan)
+    img = Image.new("RGB", (1100, 850), color="white")
     buf = io.BytesIO()
-    Image.new("RGB", (1, 1)).save(buf, format="PNG")
+    img.save(buf, format="PNG")
     buf.seek(0)
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
-        # First, upload to get a session_id
         upload_resp = await client.post(
             "/api/upload",
-            files={"file": ("sample.png", buf, "image/png")},
+            files={"file": ("scan.png", buf, "image/png")},
         )
         session_id = upload_resp.json()["session_id"]
 
-        # Then, request glyphs for that session
         resp = await client.get(f"/api/glyphs/{session_id}")
 
-    assert resp.status_code == 501
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "glyph_count" in data
+    assert data["glyph_count"] > 0
+    assert "glyphs" in data
+    assert len(data["glyphs"]) == data["glyph_count"]
