@@ -10,16 +10,14 @@ function ReviewContent() {
   const session = searchParams.get("session");
 
   const [glyphs, setGlyphs] = useState<GlyphData[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(!!session);
+  const [error, setError] = useState<string | null>(
+    session ? null : "No session parameter provided. Please upload a worksheet first."
+  );
   const [rejected, setRejected] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    if (!session) {
-      setError("No session parameter provided. Please upload a worksheet first.");
-      setLoading(false);
-      return;
-    }
+    if (!session) return;
 
     getGlyphs(session)
       .then((data) => {

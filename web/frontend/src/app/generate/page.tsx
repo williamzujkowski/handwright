@@ -278,6 +278,7 @@ function GeneratePageContent() {
           {renderedImageUrl && (
             <div className="mt-6 space-y-4">
               <div className="rounded-xl border border-gray-700 bg-gray-800 p-4 overflow-hidden">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={
                     renderedImageUrl.startsWith("http")
