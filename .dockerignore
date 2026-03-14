@@ -1,0 +1,23 @@
+# Frontend build artifacts and dependencies (not needed for API image)
+web/frontend/node_modules
+web/frontend/.next
+web/frontend/.turbo
+
+# Python artifacts
+__pycache__
+*.pyc
+*.egg-info
+dist/
+build/
+.pytest_cache
+.hypothesis
+
+# Git and IDE
+.git
+.github
+.vscode
+*.md
+!README.md
+
+# Docker
+docker-compose.yml

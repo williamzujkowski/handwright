@@ -19,6 +19,10 @@ COPY . .
 
 ENV NEXT_TELEMETRY_DISABLED=1
 
+# Accept API URL as build arg so Next.js can inline it during build
+ARG NEXT_PUBLIC_API_URL=http://localhost:8000
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+
 RUN pnpm build
 
 # Stage 3: Production runtime

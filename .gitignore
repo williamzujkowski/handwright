@@ -102,5 +102,4 @@ uploads/
 *.woff2
 output/
 
-# Docker
-.dockerignore
+# Docker (keep .dockerignore tracked)

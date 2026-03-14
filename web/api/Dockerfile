@@ -21,8 +21,8 @@ RUN pip install --no-cache-dir .
 
 # Non-root user for security
 RUN adduser --system --uid 1001 apiuser && \
-    mkdir -p /app/uploads && \
-    chown -R apiuser:nogroup /app
+    mkdir -p /app/uploads /tmp/handwright/uploads /tmp/handwright/outputs && \
+    chown -R apiuser:nogroup /app /tmp/handwright
 
 USER apiuser
 

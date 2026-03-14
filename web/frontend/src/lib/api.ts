@@ -1,6 +1,16 @@
-/** Base URL for the Handwright FastAPI backend. */
+/**
+ * Base URL for the Handwright FastAPI backend.
+ *
+ * Client-side (browser): uses empty string so fetches go through the
+ * Next.js rewrite proxy (/api/* → backend).
+ *
+ * Server-side (SSR/Docker): uses NEXT_PUBLIC_API_URL to reach the
+ * backend directly (e.g. http://api:8000 in Docker Compose).
+ */
 export const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+  typeof window !== "undefined"
+    ? ""
+    : (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000");
 
 /** A single extracted glyph returned by the backend. */
 export interface GlyphData {
@@ -83,10 +93,11 @@ async function expectOk(response: Response): Promise<Response> {
 export async function generateWorksheet(
   includeSymbols = false,
 ): Promise<Blob> {
-  const url = new URL(`${API_BASE_URL}/api/worksheet/generate`);
-  if (includeSymbols) url.searchParams.set("include_symbols", "true");
+  const path = includeSymbols
+    ? `${API_BASE_URL}/api/worksheet/generate?include_symbols=true`
+    : `${API_BASE_URL}/api/worksheet/generate`;
 
-  const response = await fetch(url.toString(), { method: "POST" });
+  const response = await fetch(path, { method: "POST" });
   await expectOk(response);
   return response.blob();
 }
