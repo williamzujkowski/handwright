@@ -29,6 +29,8 @@ export interface GlyphsResponse {
   session_id: string;
   glyph_count: number;
   glyphs: GlyphData[];
+  /** When glyph_count is 0, explains why extraction failed. */
+  detail?: string;
 }
 
 /** Parameters for the note-rendering endpoint. */

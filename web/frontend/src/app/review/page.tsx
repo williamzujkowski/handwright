@@ -25,6 +25,7 @@ function ReviewContent() {
   const [error, setError] = useState<string | null>(
     session ? null : "No session parameter provided. Please upload a worksheet first."
   );
+  const [extractionDetail, setExtractionDetail] = useState<string | null>(null);
   const [rejected, setRejected] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -33,6 +34,9 @@ function ReviewContent() {
     getGlyphs(session)
       .then((data) => {
         setGlyphs(data.glyphs);
+        if (data.glyph_count === 0 && data.detail) {
+          setExtractionDetail(data.detail);
+        }
         setLoading(false);
       })
       .catch((err: unknown) => {
@@ -122,17 +126,34 @@ function ReviewContent() {
 
       {/* Glyph grid */}
       {glyphs.length === 0 ? (
-        <div className="rounded-xl border border-gray-800 bg-gray-900 p-12 text-center">
-          <p className="text-gray-400 text-lg mb-2">No glyphs extracted</p>
-          <p className="text-gray-500 text-sm mb-6">
-            The worksheet could not be processed. Try uploading a clearer scan with better lighting.
-          </p>
-          <a
-            href="/upload"
-            className="inline-flex items-center justify-center rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-6 py-2.5 text-sm transition-colors"
-          >
-            Re-upload Worksheet
-          </a>
+        <div className="rounded-xl border border-gray-800 bg-gray-900 p-8">
+          <p className="text-gray-300 text-lg font-semibold mb-2 text-center">No glyphs extracted</p>
+
+          {extractionDetail && (
+            <div className="mb-4 p-3 rounded-lg bg-amber-950/30 border border-amber-800/40 text-amber-300 text-sm">
+              {extractionDetail}
+            </div>
+          )}
+
+          <div className="mb-6 text-sm text-gray-400 space-y-3">
+            <p className="font-medium text-gray-300">Troubleshooting checklist:</p>
+            <ul className="list-disc list-inside space-y-1.5 text-gray-400">
+              <li>Did you <strong className="text-gray-300">print</strong> the worksheet, <strong className="text-gray-300">fill it in with dark ink</strong>, and then photograph or scan it?</li>
+              <li>Do not upload the blank PDF itself — upload a <strong className="text-gray-300">photo of the filled pages</strong></li>
+              <li>Use <strong className="text-gray-300">PNG or JPG</strong> format (not PDF)</li>
+              <li>Ensure the image is <strong className="text-gray-300">well-lit, flat, and shows the full page</strong> including corner markers</li>
+              <li>Use a <strong className="text-gray-300">dark pen</strong> (ballpoint or felt-tip) — pencil may be too faint</li>
+            </ul>
+          </div>
+
+          <div className="text-center">
+            <a
+              href="/upload"
+              className="inline-flex items-center justify-center rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-6 py-2.5 text-sm transition-colors"
+            >
+              Re-upload Worksheet
+            </a>
+          </div>
         </div>
       ) : (
       <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-3" role="group" aria-label="Extracted glyphs">

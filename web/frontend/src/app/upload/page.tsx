@@ -158,10 +158,13 @@ export default function UploadPage() {
         </div>
       )}
 
-      <p className="mt-4 text-xs text-gray-600 text-center">
-        Maximum file size: 10 MB. Images are processed server-side and not
-        retained after your session.
-      </p>
+      <div className="mt-4 space-y-2 text-xs text-gray-600 text-center">
+        <p>Maximum file size: 10 MB. Sessions expire after 1 hour.</p>
+        <p className="text-amber-400/80">
+          Upload a <strong>photo or scan</strong> of your filled-in worksheet —
+          not the blank PDF itself.
+        </p>
+      </div>
 
       <p className="mt-8 text-sm text-gray-500">
         After uploading, you will be taken to{" "}

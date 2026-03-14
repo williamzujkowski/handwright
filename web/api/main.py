@@ -282,14 +282,29 @@ async def get_glyphs(session_id: str) -> dict[str, object]:
 
     # Find the uploaded image
     image_path = None
+    file_ext = ""
     for ext in [".png", ".jpg", ".jpeg", ".pdf", ".heic"]:
         candidate = session_dir / f"original{ext}"
         if candidate.exists():
             image_path = candidate
+            file_ext = ext
             break
 
     if image_path is None:
         raise HTTPException(status_code=404, detail="No uploaded image found for this session.")
+
+    # PDF files can't be processed by the image pipeline
+    if file_ext == ".pdf":
+        return {
+            "session_id": session_id,
+            "glyph_count": 0,
+            "glyphs": [],
+            "detail": (
+                "PDF files cannot be processed directly by the image pipeline. "
+                "Please print the worksheet, fill it in with dark ink, then photograph "
+                "or scan the completed pages and upload the image (PNG or JPG)."
+            ),
+        }
 
     # Run detection + extraction pipeline (CPU-bound, offload to thread pool)
     glyphs_dir = session_dir / "glyphs"
@@ -300,10 +315,27 @@ async def get_glyphs(session_id: str) -> dict[str, object]:
         result = await loop.run_in_executor(None, detector.detect, image_path)
     except (ValueError, FileNotFoundError) as exc:
         logger.warning("Detection failed for session %s: %s", session_id, exc)
-        return {"session_id": session_id, "glyph_count": 0, "glyphs": []}
+        return {
+            "session_id": session_id,
+            "glyph_count": 0,
+            "glyphs": [],
+            "detail": (
+                "Could not detect worksheet cells in the uploaded image. "
+                "Make sure the image is well-lit, flat, and shows the full worksheet page."
+            ),
+        }
 
     if not result.boxes:
-        return {"session_id": session_id, "glyph_count": 0, "glyphs": []}
+        return {
+            "session_id": session_id,
+            "glyph_count": 0,
+            "glyphs": [],
+            "detail": (
+                "No character cells detected. Ensure you uploaded a photo of a filled-in "
+                "worksheet (not the blank PDF). The image should be well-lit and show "
+                "the full page with alignment markers visible in the corners."
+            ),
+        }
 
     extractor = GlyphExtractor()
     try:
@@ -317,7 +349,15 @@ async def get_glyphs(session_id: str) -> dict[str, object]:
         )
     except (ValueError, FileNotFoundError, cv2.error) as exc:
         logger.warning("Extraction failed for session %s: %s", session_id, exc)
-        return {"session_id": session_id, "glyph_count": 0, "glyphs": []}
+        return {
+            "session_id": session_id,
+            "glyph_count": 0,
+            "glyphs": [],
+            "detail": (
+                "Glyph extraction failed. Try re-scanning with better lighting "
+                "and ensure each character is written clearly with dark ink."
+            ),
+        }
 
     return {
         "session_id": session_id,
