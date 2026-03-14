@@ -12,7 +12,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy project files for installation
-COPY pyproject.toml ./
+COPY pyproject.toml README.md ./
 COPY engine/ ./engine/
 COPY web/ ./web/
 

@@ -58,3 +58,18 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install project
+        run: pip install .
+
+      - name: Run pip-audit
+        run: pip install pip-audit && pip-audit
