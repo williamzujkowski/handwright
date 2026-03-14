@@ -4,17 +4,15 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from engine.worksheet.generator import (
+    DIGIT_VARIANTS,
+    DIGITS,
     LOWERCASE,
     LOWERCASE_VARIANTS,
-    UPPERCASE,
-    UPPERCASE_VARIANTS,
-    DIGITS,
-    DIGIT_VARIANTS,
     PUNCTUATION,
     PUNCTUATION_VARIANTS,
+    UPPERCASE,
+    UPPERCASE_VARIANTS,
     WorksheetConfig,
     WorksheetGenerator,
 )

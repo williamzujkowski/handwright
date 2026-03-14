@@ -5,7 +5,6 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-
 # Standard output size for normalised glyphs.
 STANDARD_SIZE = 256
 
@@ -84,7 +83,7 @@ class GlyphExtractor:
         output_dir.mkdir(parents=True, exist_ok=True)
 
         glyphs: list[Glyph] = []
-        for i, (box, label) in enumerate(zip(boxes, labels)):
+        for i, (box, label) in enumerate(zip(boxes, labels, strict=False)):
             glyph = self._process_cell(image, box, label, output_dir, i)
             glyphs.append(glyph)
 

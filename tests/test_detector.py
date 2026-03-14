@@ -10,11 +10,6 @@ import pytest
 
 from engine.segmentation.detector import DetectionResult, WorksheetDetector
 from engine.worksheet.generator import (
-    CELL_SIZE,
-    MARKER_SIZE,
-    MARGIN_X,
-    MARGIN_Y,
-    WorksheetConfig,
     WorksheetGenerator,
 )
 

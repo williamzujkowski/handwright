@@ -8,14 +8,13 @@ from __future__ import annotations
 
 import io
 import json
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 
 import qrcode
 from reportlab.lib.pagesizes import LETTER, landscape
 from reportlab.lib.units import mm
 from reportlab.pdfgen import canvas
-
 
 # Character set specification
 LOWERCASE = list("abcdefghijklmnopqrstuvwxyz")

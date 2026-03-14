@@ -132,7 +132,7 @@ async def generate_worksheet() -> FileResponse:
 
 
 @app.post("/api/upload", tags=["upload"])
-async def upload_image(file: UploadFile = File(...)) -> dict[str, str]:
+async def upload_image(file: UploadFile = File(...)) -> dict[str, str]:  # noqa: B008
     """Accept a handwriting image upload and begin processing.
 
     Returns a session_id for subsequent glyph extraction calls.
@@ -315,10 +315,7 @@ async def generate_font(body: FontGenerateRequest) -> FontGenerateResponse:
             continue
         label = parts[1]
         # For variant labels like "a_1", take the first character
-        if "_" in label:
-            char = label.split("_")[0]
-        else:
-            char = label
+        char = label.split("_")[0] if "_" in label else label
         # Only take the first variant of each character
         if char and len(char) == 1 and char not in glyph_map:
             glyph_map[char] = png
