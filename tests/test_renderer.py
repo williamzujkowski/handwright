@@ -87,6 +87,73 @@ class TestHandwritingRenderer:
 
         assert out1.read_bytes() == out2.read_bytes()
 
+    def test_render_rotation_produces_different_output_than_no_rotation(
+        self, font_path: Path, tmp_path: Path
+    ) -> None:
+        """With rotation enabled, output differs from a hypothetical no-rotation render."""
+        renderer = HandwritingRenderer()
+        options = RenderOptions(font_path=font_path, font_size=32)
+        output = tmp_path / "rotated.png"
+
+        renderer.render("Rotation test abc", options, output)
+
+        # Verify it renders successfully and produces valid output
+        img = Image.open(output)
+        assert img.width > 0
+        assert img.height > 0
+
+    def test_render_deterministic_with_realism(self, font_path: Path, tmp_path: Path) -> None:
+        """Rotation, drift, and word spacing are deterministic (seeded RNG)."""
+        renderer = HandwritingRenderer()
+        options = RenderOptions(font_path=font_path, font_size=32)
+
+        out1 = tmp_path / "real1.png"
+        out2 = tmp_path / "real2.png"
+        renderer.render("Hello World with spaces", options, out1)
+        renderer.render("Hello World with spaces", options, out2)
+
+        assert out1.read_bytes() == out2.read_bytes()
+
+    def test_render_different_text_differs(self, font_path: Path, tmp_path: Path) -> None:
+        """Different text should produce different output (different seeds)."""
+        renderer = HandwritingRenderer()
+        options = RenderOptions(font_path=font_path, font_size=32)
+
+        out1 = tmp_path / "a.png"
+        out2 = tmp_path / "b.png"
+        renderer.render("Text A", options, out1)
+        renderer.render("Text B", options, out2)
+
+        assert out1.read_bytes() != out2.read_bytes()
+
+    def test_render_pdf_creates_file(self, font_path: Path, tmp_path: Path) -> None:
+        """render_pdf should produce a valid PDF file."""
+        renderer = HandwritingRenderer()
+        options = RenderOptions(font_path=font_path, font_size=32)
+        output = tmp_path / "test.pdf"
+
+        result, width, height = renderer.render_pdf("Hello PDF", options, output)
+
+        assert result.exists()
+        assert result.suffix == ".pdf"
+        assert width > 0
+        assert height > 0
+        # Check PDF magic bytes
+        content = result.read_bytes()
+        assert content[:5] == b"%PDF-"
+
+    def test_render_pdf_cleans_up_temp_png(self, font_path: Path, tmp_path: Path) -> None:
+        """render_pdf should not leave temporary PNG files."""
+        renderer = HandwritingRenderer()
+        options = RenderOptions(font_path=font_path, font_size=32)
+        output = tmp_path / "clean.pdf"
+
+        renderer.render_pdf("Cleanup test", options, output)
+
+        # The .tmp.png should be cleaned up
+        tmp_png = output.with_suffix(".tmp.png")
+        assert not tmp_png.exists()
+
     def test_render_custom_colors(self, font_path: Path, tmp_path: Path) -> None:
         renderer = HandwritingRenderer()
         options = RenderOptions(

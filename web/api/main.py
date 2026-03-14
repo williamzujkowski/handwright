@@ -159,6 +159,7 @@ class RenderRequest(BaseModel):
     session_id: str = Field(pattern=r"^[a-f0-9]{32}$")
     font_size: int = Field(default=48, ge=8, le=200)
     line_spacing: float = Field(default=1.5, ge=0.5, le=5.0)
+    format: str = Field(default="png", pattern=r"^(png|pdf)$")
 
 
 class RenderResponse(BaseModel):
@@ -363,7 +364,7 @@ async def render_text(request: Request, body: RenderRequest) -> RenderResponse:
         )
 
     _OUTPUTS_DIR.mkdir(parents=True, exist_ok=True)
-    output_path = _OUTPUTS_DIR / f"render_{uuid.uuid4().hex[:8]}.png"
+    render_id = uuid.uuid4().hex[:8]
 
     options = RenderOptions(
         font_path=font_path,
@@ -373,15 +374,25 @@ async def render_text(request: Request, body: RenderRequest) -> RenderResponse:
 
     renderer = HandwritingRenderer()
     loop = asyncio.get_event_loop()
-    await loop.run_in_executor(None, renderer.render, body.text, options, output_path)
 
-    from PIL import Image as PILImage
+    if body.format == "pdf":
+        output_path = _OUTPUTS_DIR / f"render_{render_id}.pdf"
+        _, width, height = await loop.run_in_executor(
+            None, renderer.render_pdf, body.text, options, output_path
+        )
+    else:
+        output_path = _OUTPUTS_DIR / f"render_{render_id}.png"
+        await loop.run_in_executor(None, renderer.render, body.text, options, output_path)
+        from PIL import Image as PILImage
 
-    img = PILImage.open(output_path)
+        img = PILImage.open(output_path)
+        width, height = img.width, img.height
+        img.close()
+
     return RenderResponse(
         image_url=f"/api/renders/{output_path.name}",
-        width=img.width,
-        height=img.height,
+        width=width,
+        height=height,
     )
 
 
@@ -493,12 +504,13 @@ async def generate_font(request: Request, body: FontGenerateRequest) -> FontGene
 
 @app.get("/api/renders/{filename}", tags=["render"])
 async def get_render_image(filename: str) -> FileResponse:
-    """Serve a rendered handwriting image."""
+    """Serve a rendered handwriting image or PDF."""
     safe_name = Path(filename).name
     path = _safe_resolve(_OUTPUTS_DIR, safe_name)
     if not path.exists():
         raise HTTPException(status_code=404, detail="Render not found.")
-    return FileResponse(path=str(path), media_type="image/png")
+    media_type = "application/pdf" if safe_name.endswith(".pdf") else "image/png"
+    return FileResponse(path=str(path), media_type=media_type)
 
 
 @app.get("/api/fonts/{filename}", tags=["font"])
