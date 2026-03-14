@@ -1,4 +1,37 @@
+"use client";
+
+import { useState } from "react";
+import { generateWorksheet } from "@/lib/api";
+
 export default function WorksheetPage() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleGenerate() {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const blob = await generateWorksheet();
+
+      // Trigger browser download
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "handwright_worksheet.pdf";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to generate worksheet.";
+      setError(message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <div className="max-w-3xl mx-auto px-4 py-16">
       <h1 className="text-3xl font-bold text-white mb-3">
@@ -10,29 +43,62 @@ export default function WorksheetPage() {
         the Upload step.
       </p>
 
-      {/* Placeholder worksheet preview */}
       <div className="rounded-xl border border-gray-800 bg-gray-900 p-10 flex flex-col items-center gap-6 text-center">
         <div className="w-16 h-16 rounded-full bg-gray-800 flex items-center justify-center text-3xl">
           📄
         </div>
         <div>
           <p className="text-gray-300 font-medium mb-1">
-            Worksheet generation coming soon
+            Handwriting Worksheet (PDF)
           </p>
           <p className="text-gray-500 text-sm">
-            The PDF will include all 96 printable ASCII characters laid out in
-            clearly defined boxes.
+            The PDF includes all 96 printable ASCII characters laid out in
+            clearly defined boxes with alignment markers.
           </p>
         </div>
+
         <button
-          disabled
-          className="inline-flex items-center justify-center rounded-lg bg-indigo-600 opacity-50 cursor-not-allowed text-white font-semibold px-6 py-2.5 text-sm"
+          onClick={handleGenerate}
+          disabled={loading}
+          className={`inline-flex items-center justify-center rounded-lg text-white font-semibold px-6 py-2.5 text-sm transition-colors ${
+            loading
+              ? "bg-indigo-600 opacity-50 cursor-not-allowed"
+              : "bg-indigo-600 hover:bg-indigo-500 cursor-pointer"
+          }`}
         >
-          Download Worksheet (PDF)
+          {loading ? "Generating..." : "Generate & Download Worksheet"}
         </button>
+
+        {error && (
+          <p className="text-red-400 text-sm mt-2">Error: {error}</p>
+        )}
       </div>
 
-      {/* Next step hint */}
+      <div className="mt-8 rounded-lg border border-gray-800 bg-gray-900/50 p-6">
+        <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wide mb-3">
+          Instructions
+        </h2>
+        <ol className="list-decimal list-inside text-gray-400 text-sm space-y-2">
+          <li>Click the button above to generate and download the worksheet PDF.</li>
+          <li>Print the PDF on standard letter or A4 paper.</li>
+          <li>
+            Write each character in its box using your natural handwriting and a
+            dark pen or marker.
+          </li>
+          <li>
+            Scan or photograph the completed worksheet (keep it flat and
+            well-lit).
+          </li>
+          <li>
+            Go to the{" "}
+            <a href="/upload" className="text-indigo-400 hover:underline">
+              Upload
+            </a>{" "}
+            page to submit your scan.
+          </li>
+        </ol>
+      </div>
+
       <p className="mt-6 text-sm text-gray-500">
         Once you have filled in the worksheet, go to{" "}
         <a href="/upload" className="text-indigo-400 hover:underline">
