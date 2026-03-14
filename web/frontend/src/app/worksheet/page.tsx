@@ -2,11 +2,14 @@
 
 import { useState } from "react";
 import { generateWorksheet } from "@/lib/api";
+import { ProgressStepper } from "@/components/progress-stepper";
+import { useToast } from "@/components/toast";
 
 export default function WorksheetPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [includeSymbols, setIncludeSymbols] = useState(false);
+  const { toast } = useToast();
 
   async function handleGenerate() {
     setLoading(true);
@@ -24,10 +27,12 @@ export default function WorksheetPage() {
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
+      toast("Worksheet downloaded successfully!");
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Failed to generate worksheet.";
       setError(message);
+      toast(message, "error");
     } finally {
       setLoading(false);
     }
@@ -35,6 +40,7 @@ export default function WorksheetPage() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-16">
+      <ProgressStepper />
       <h1 className="text-3xl font-bold text-white mb-3">
         Generate Worksheet
       </h1>

@@ -3,6 +3,7 @@
 import { useSearchParams, useRouter } from "next/navigation";
 import { useEffect, useState, Suspense } from "react";
 import { getGlyphs, type GlyphData } from "@/lib/api";
+import { ProgressStepper } from "@/components/progress-stepper";
 
 function ReviewContent() {
   const searchParams = useSearchParams();
@@ -77,6 +78,7 @@ function ReviewContent() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-16">
+      <ProgressStepper />
       <h1 className="text-3xl font-bold text-white mb-3">Review Glyphs</h1>
       <p className="text-gray-400 mb-8 leading-relaxed">
         Each character extracted from your worksheet is shown below. Click any
@@ -84,7 +86,7 @@ function ReviewContent() {
       </p>
 
       {/* Status bar */}
-      <div className="flex items-center justify-between mb-6 py-3 px-4 rounded-lg border border-gray-800 bg-gray-900 text-sm">
+      <div className="sticky top-14 z-40 flex items-center justify-between mb-6 py-3 px-4 rounded-lg border border-gray-800 bg-gray-900/95 backdrop-blur-sm text-sm">
         <span className="text-gray-400">
           <span className="text-white font-medium">{approvedCount}</span> of{" "}
           <span className="text-white font-medium">{glyphs.length}</span> glyphs
@@ -101,7 +103,7 @@ function ReviewContent() {
       </div>
 
       {/* Glyph grid */}
-      <div className="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-10 gap-3">
+      <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-3">
         {glyphs.map((glyph) => {
           const isRejected = rejected.has(glyph.label);
           return (

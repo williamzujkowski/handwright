@@ -2,6 +2,8 @@
 
 import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
+import { ProgressStepper } from "@/components/progress-stepper";
+import { useToast } from "@/components/toast";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -20,91 +22,13 @@ interface RenderResponse {
 }
 
 /* ------------------------------------------------------------------ */
-/* Progress Indicator                                                  */
-/* ------------------------------------------------------------------ */
-
-const STEPS = [
-  { label: "Worksheet", href: "/worksheet" },
-  { label: "Upload", href: "/upload" },
-  { label: "Review", href: "/review" },
-  { label: "Generate", href: null },
-] as const;
-
-function ProgressBar({ sessionId }: { sessionId: string | null }) {
-  const currentIndex = 3; // Generate is step 4 (index 3)
-  return (
-    <nav aria-label="Progress" className="mb-10">
-      <ol className="flex items-center gap-0">
-        {STEPS.map((step, idx) => {
-          const isCompleted = idx < currentIndex;
-          const isCurrent = idx === currentIndex;
-          const href =
-            step.href && sessionId
-              ? `${step.href}?session=${sessionId}`
-              : step.href;
-
-          return (
-            <li key={step.label} className="flex items-center">
-              {idx > 0 && (
-                <div
-                  className={`w-8 sm:w-12 h-0.5 ${
-                    isCompleted ? "bg-indigo-500" : "bg-gray-700"
-                  }`}
-                />
-              )}
-              {href && isCompleted ? (
-                <a
-                  href={href}
-                  className="flex items-center gap-2 group"
-                >
-                  <span className="flex items-center justify-center w-8 h-8 rounded-full bg-indigo-600 text-white text-xs font-bold group-hover:bg-indigo-500 transition-colors">
-                    {idx + 1}
-                  </span>
-                  <span className="hidden sm:inline text-sm text-indigo-400 group-hover:text-indigo-300 transition-colors">
-                    {step.label}
-                  </span>
-                </a>
-              ) : (
-                <span className="flex items-center gap-2">
-                  <span
-                    className={`flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold ${
-                      isCurrent
-                        ? "bg-indigo-600 text-white ring-2 ring-indigo-400 ring-offset-2 ring-offset-gray-950"
-                        : isCompleted
-                          ? "bg-indigo-600 text-white"
-                          : "bg-gray-800 text-gray-500 border border-gray-700"
-                    }`}
-                  >
-                    {idx + 1}
-                  </span>
-                  <span
-                    className={`hidden sm:inline text-sm ${
-                      isCurrent
-                        ? "text-white font-semibold"
-                        : isCompleted
-                          ? "text-indigo-400"
-                          : "text-gray-600"
-                    }`}
-                  >
-                    {step.label}
-                  </span>
-                </span>
-              )}
-            </li>
-          );
-        })}
-      </ol>
-    </nav>
-  );
-}
-
-/* ------------------------------------------------------------------ */
 /* Main Content                                                        */
 /* ------------------------------------------------------------------ */
 
 function GeneratePageContent() {
   const searchParams = useSearchParams();
   const sessionId = searchParams.get("session");
+  const { toast } = useToast();
 
   const [familyName, setFamilyName] = useState("My Handwriting");
   const [designer, setDesigner] = useState("");
@@ -127,7 +51,7 @@ function GeneratePageContent() {
   if (!sessionId) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-16">
-        <ProgressBar sessionId={null} />
+        <ProgressStepper />
         <div className="rounded-xl border border-red-800 bg-red-950/50 p-8 text-center">
           <h1 className="text-2xl font-bold text-red-300 mb-3">
             No Session Found
@@ -178,10 +102,12 @@ function GeneratePageContent() {
       setCssSnippet(data.css_snippet);
       setGlyphCount(data.glyph_count);
       setVariantCount(data.variant_count);
+      toast(`Font generated with ${data.glyph_count} glyphs!`);
     } catch (err) {
-      setFontError(
-        err instanceof Error ? err.message : "Font generation failed",
-      );
+      const message =
+        err instanceof Error ? err.message : "Font generation failed";
+      setFontError(message);
+      toast(message, "error");
     } finally {
       setGenerating(false);
     }
@@ -251,7 +177,7 @@ function GeneratePageContent() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-16">
-      <ProgressBar sessionId={sessionId} />
+      <ProgressStepper />
 
       <h1 className="text-3xl font-bold text-white mb-2">
         Generate Your Font
@@ -437,9 +363,35 @@ function GeneratePageContent() {
         {/* CSS snippet */}
         {cssSnippet && !fontError && (
           <div className="mt-4">
-            <p className="text-sm font-medium text-gray-300 mb-1.5">
-              CSS snippet — use this to load your font on the web
-            </p>
+            <div className="flex items-center justify-between mb-1.5">
+              <p className="text-sm font-medium text-gray-300">
+                CSS snippet — use this to load your font on the web
+              </p>
+              <button
+                onClick={() => {
+                  void navigator.clipboard.writeText(cssSnippet).then(() => {
+                    toast("CSS copied to clipboard!", "info");
+                  });
+                }}
+                className="inline-flex items-center gap-1.5 text-xs text-gray-400 hover:text-indigo-400 transition-colors px-2 py-1 rounded hover:bg-gray-800"
+                title="Copy to clipboard"
+              >
+                <svg
+                  className="w-3.5 h-3.5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth="2"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9.75a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184"
+                  />
+                </svg>
+                Copy
+              </button>
+            </div>
             <pre className="rounded-lg bg-gray-800 border border-gray-700 text-gray-300 text-xs px-4 py-3 overflow-x-auto whitespace-pre">
               {cssSnippet}
             </pre>

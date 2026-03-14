@@ -4,6 +4,8 @@ import { describe, expect, it, vi } from "vitest";
 // Mock next/navigation
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn() }),
+  usePathname: () => "/upload",
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 // Mock api module

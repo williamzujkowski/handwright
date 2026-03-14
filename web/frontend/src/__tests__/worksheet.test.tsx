@@ -1,6 +1,13 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
+// Mock next/navigation
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn() }),
+  usePathname: () => "/worksheet",
+  useSearchParams: () => new URLSearchParams(),
+}));
+
 // Mock api module
 vi.mock("@/lib/api", () => ({
   generateWorksheet: vi.fn(),

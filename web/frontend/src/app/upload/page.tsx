@@ -3,6 +3,8 @@
 import { useCallback, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { uploadImage } from "@/lib/api";
+import { ProgressStepper } from "@/components/progress-stepper";
+import { useToast } from "@/components/toast";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 const ALLOWED_EXTENSIONS = new Set([".jpg", ".jpeg", ".png", ".pdf", ".heic"]);
@@ -19,6 +21,7 @@ export default function UploadPage() {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
+  const { toast } = useToast();
 
   const handleFile = useCallback(
     async (file: File) => {
@@ -46,13 +49,16 @@ export default function UploadPage() {
 
       try {
         const data = await uploadImage(file);
+        toast("Upload complete! Redirecting to review...");
         router.push(`/review?session=${data.session_id}`);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Upload failed");
+        const message = err instanceof Error ? err.message : "Upload failed";
+        setError(message);
+        toast(message, "error");
         setUploading(false);
       }
     },
-    [router]
+    [router, toast]
   );
 
   const onDrop = useCallback(
@@ -75,6 +81,7 @@ export default function UploadPage() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-16">
+      <ProgressStepper />
       <h1 className="text-3xl font-bold text-white mb-3">
         Upload Handwriting
       </h1>
@@ -101,7 +108,7 @@ export default function UploadPage() {
         onDragLeave={() => setDragOver(false)}
         onDrop={onDrop}
         onClick={() => inputRef.current?.click()}
-        className={`rounded-xl border-2 border-dashed transition-colors p-16 flex flex-col items-center gap-4 text-center cursor-pointer ${
+        className={`rounded-xl border-2 border-dashed transition-colors p-8 sm:p-16 flex flex-col items-center gap-4 text-center cursor-pointer ${
           dragOver
             ? "border-indigo-500 bg-indigo-950/30"
             : "border-gray-700 bg-gray-900 hover:border-indigo-600"
