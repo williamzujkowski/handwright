@@ -1,4 +1,4 @@
-.PHONY: dev dev-frontend dev-api build test lint docker-up docker-down clean
+.PHONY: dev dev-frontend dev-api build test lint docker-up docker-down clean release changelog
 
 # Start both frontend and backend in development mode (parallel)
 dev:
@@ -55,3 +55,23 @@ clean:
 	find . -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true
 	find . -type d -name ".ruff_cache" -exec rm -rf {} + 2>/dev/null || true
 	@echo "Clean complete."
+
+# Bump version, commit, and tag for release
+# Usage: make release VERSION=0.3.0
+release:
+ifndef VERSION
+	$(error VERSION is required. Usage: make release VERSION=0.3.0)
+endif
+	@echo "Releasing v$(VERSION)..."
+	sed -i 's/^version = ".*"/version = "$(VERSION)"/' pyproject.toml
+	git add pyproject.toml
+	git commit -m "chore: release v$(VERSION)"
+	git tag v$(VERSION)
+	@echo ""
+	@echo "Release v$(VERSION) committed and tagged locally."
+	@echo "To publish, run:"
+	@echo "  git push && git push origin v$(VERSION)"
+
+# Show commits since the last tag
+changelog:
+	git log $(shell git describe --tags --abbrev=0 2>/dev/null || echo HEAD)..HEAD --oneline --no-decorate

@@ -1,0 +1,142 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  ci:
+    name: CI gate
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - job: test-backend
+          - job: test-frontend
+          - job: security
+
+    steps:
+      # ── test-backend ──────────────────────────────────────────────────────
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        if: matrix.job != 'test-frontend'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install project (full dev)
+        if: matrix.job == 'test-backend'
+        run: pip install -e ".[dev]"
+
+      - name: Lint (ruff check)
+        if: matrix.job == 'test-backend'
+        run: ruff check engine/ web/ tests/
+
+      - name: Format check (ruff format)
+        if: matrix.job == 'test-backend'
+        run: ruff format --check engine/ web/ tests/
+
+      - name: Run pytest
+        if: matrix.job == 'test-backend'
+        run: pytest tests/ -v --tb=short
+
+      # ── test-frontend ─────────────────────────────────────────────────────
+      - uses: pnpm/action-setup@v4
+        if: matrix.job == 'test-frontend'
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        if: matrix.job == 'test-frontend'
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: web/frontend/pnpm-lock.yaml
+
+      - name: Install frontend dependencies
+        if: matrix.job == 'test-frontend'
+        working-directory: web/frontend
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint (pnpm lint)
+        if: matrix.job == 'test-frontend'
+        working-directory: web/frontend
+        run: pnpm lint
+
+      - name: Type check (tsc)
+        if: matrix.job == 'test-frontend'
+        working-directory: web/frontend
+        run: pnpm tsc --noEmit
+
+      - name: Build frontend
+        if: matrix.job == 'test-frontend'
+        working-directory: web/frontend
+        run: pnpm build
+
+      # ── security ──────────────────────────────────────────────────────────
+      - name: Install project (runtime only)
+        if: matrix.job == 'security'
+        run: pip install .
+
+      - name: pip-audit
+        if: matrix.job == 'security'
+        run: pip install pip-audit && pip-audit
+
+  build-and-publish:
+    name: Build artifacts and publish
+    needs: ci
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # ── Python wheel ──────────────────────────────────────────────────────
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Build wheel
+        run: pip wheel --no-deps -w dist/ .
+
+      # ── Docker images ─────────────────────────────────────────────────────
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build Docker images
+        run: docker compose build
+
+      - name: Push api image
+        run: |
+          docker tag handwright-api ghcr.io/${{ github.repository }}/api:${{ github.ref_name }}
+          docker tag handwright-api ghcr.io/${{ github.repository }}/api:latest
+          docker push ghcr.io/${{ github.repository }}/api:${{ github.ref_name }}
+          docker push ghcr.io/${{ github.repository }}/api:latest
+
+      - name: Push frontend image
+        run: |
+          docker tag handwright-frontend ghcr.io/${{ github.repository }}/frontend:${{ github.ref_name }}
+          docker tag handwright-frontend ghcr.io/${{ github.repository }}/frontend:latest
+          docker push ghcr.io/${{ github.repository }}/frontend:${{ github.ref_name }}
+          docker push ghcr.io/${{ github.repository }}/frontend:latest
+
+      # ── GitHub Release ────────────────────────────────────────────────────
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create ${{ github.ref_name }} dist/*.whl \
+            --generate-notes \
+            --title "Handwright ${{ github.ref_name }}"
