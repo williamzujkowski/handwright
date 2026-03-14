@@ -5,6 +5,16 @@ import { useEffect, useState, Suspense } from "react";
 import { getGlyphs, type GlyphData } from "@/lib/api";
 import { ProgressStepper } from "@/components/progress-stepper";
 
+/** Extract the display character from a glyph label like "a_1" → "a", "cell_0" → "?" */
+function getDisplayChar(label: string): string {
+  // Labels are formatted as "char_variant" (e.g., "a_1", "B_2", "!_1")
+  // or "cell_N" for fallback sequential labels
+  if (label.startsWith("cell_")) return "?";
+  const underscoreIdx = label.lastIndexOf("_");
+  if (underscoreIdx > 0) return label.slice(0, underscoreIdx);
+  return label;
+}
+
 function ReviewContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -128,6 +138,7 @@ function ReviewContent() {
       <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-3" role="group" aria-label="Extracted glyphs">
         {glyphs.map((glyph) => {
           const isRejected = rejected.has(glyph.label);
+          const displayChar = getDisplayChar(glyph.label);
           return (
             <button
               key={glyph.label}
@@ -138,13 +149,21 @@ function ReviewContent() {
                   ? "border-red-800 bg-red-950/30 opacity-40"
                   : "border-gray-800 bg-gray-900 hover:border-gray-600"
               }`}
-              title={isRejected ? `Rejected: ${glyph.label}` : `Approve: ${glyph.label}`}
+              title={isRejected ? `Rejected: ${displayChar}` : `Approve: ${displayChar}`}
             >
+              <div className="px-1 pt-1 w-full flex items-center justify-between">
+                <span className={`text-xs font-bold font-mono ${isRejected ? "text-red-400" : "text-indigo-400"}`}>
+                  {displayChar}
+                </span>
+                <span className="text-[10px] text-gray-600 font-mono">
+                  {glyph.label.includes("_") ? glyph.label.split("_").pop() : ""}
+                </span>
+              </div>
               <div className="w-full aspect-square relative bg-gray-950 flex items-center justify-center">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={glyph.image_url}
-                  alt={`Glyph ${glyph.label}`}
+                  alt={`Glyph: ${displayChar}`}
                   className={`max-w-full max-h-full object-contain ${
                     isRejected ? "grayscale" : ""
                   }`}
@@ -155,13 +174,6 @@ function ReviewContent() {
                   </div>
                 )}
               </div>
-              <span
-                className={`text-xs py-1 font-mono truncate w-full text-center ${
-                  isRejected ? "text-red-400 line-through" : "text-gray-400"
-                }`}
-              >
-                {glyph.label}
-              </span>
             </button>
           );
         })}

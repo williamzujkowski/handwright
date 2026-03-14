@@ -171,6 +171,31 @@ export async function previewText(params: {
 }
 
 /**
+ * Render text as a PDF using the user's handwriting font.
+ * Returns the same response shape as previewText (image_url points to PDF).
+ */
+export async function renderPdf(params: {
+  text: string;
+  session_id: string;
+  font_size?: number;
+  line_spacing?: number;
+}): Promise<RenderResponse> {
+  const response = await fetch(`${API_BASE_URL}/api/render`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      text: params.text,
+      session_id: params.session_id,
+      font_size: params.font_size ?? 48,
+      line_spacing: params.line_spacing ?? 1.5,
+      format: "pdf",
+    }),
+  });
+  if (!response.ok) throw new Error(`PDF render failed: ${response.status}`);
+  return response.json() as Promise<RenderResponse>;
+}
+
+/**
  * Trigger font generation for a session.
  * Returns JSON with download URLs and metadata.
  */
