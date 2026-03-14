@@ -92,9 +92,11 @@ uploads/
 !public/**/*.png
 !public/**/*.jpg
 !public/**/*.jpeg
+!tests/fixtures/**/*.png
 
 # Generated fonts and output
 *.ttf
+!tests/fixtures/**/*.ttf
 *.otf
 *.woff
 *.woff2
