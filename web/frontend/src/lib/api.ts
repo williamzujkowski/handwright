@@ -4,14 +4,21 @@ const BASE_URL =
 
 /** A single extracted glyph returned by the backend. */
 export interface GlyphData {
-  /** Unicode character this glyph represents, e.g. "A" */
-  character: string;
-  /** Session-scoped identifier for this glyph */
-  glyph_id: string;
-  /** URL to the extracted glyph image (relative to BASE_URL or absolute) */
+  /** Label for this glyph, e.g. "a_1" */
+  label: string;
+  /** URL to the extracted glyph image (relative to API) */
   image_url: string;
-  /** Whether the glyph was successfully segmented */
-  ok: boolean;
+  /** Width of the glyph image in pixels */
+  width: number;
+  /** Height of the glyph image in pixels */
+  height: number;
+}
+
+/** Response from the glyphs extraction endpoint. */
+export interface GlyphsResponse {
+  session_id: string;
+  glyph_count: number;
+  glyphs: GlyphData[];
 }
 
 /** Parameters for the note-rendering endpoint. */
@@ -81,14 +88,14 @@ export async function uploadImage(file: File): Promise<UploadResponse> {
 
 /**
  * Retrieve all glyphs associated with a session.
- * Glyphs may still be processing; poll until all have `ok: true`.
+ * Returns the full response including session_id, glyph_count, and glyphs array.
  */
-export async function getGlyphs(sessionId: string): Promise<GlyphData[]> {
+export async function getGlyphs(sessionId: string): Promise<GlyphsResponse> {
   const response = await fetch(
     `${BASE_URL}/api/glyphs/${encodeURIComponent(sessionId)}`,
   );
   await expectOk(response);
-  return response.json() as Promise<GlyphData[]>;
+  return response.json() as Promise<GlyphsResponse>;
 }
 
 /**
@@ -109,11 +116,19 @@ export async function renderNote(params: RenderParams): Promise<Blob> {
  * Trigger font generation for a session and download the resulting .ttf file.
  * Returns the font file as a Blob so the caller can offer a browser download.
  */
-export async function generateFont(sessionId: string): Promise<Blob> {
+export async function generateFont(
+  sessionId: string,
+  familyName: string,
+  designer?: string,
+): Promise<Blob> {
   const response = await fetch(`${BASE_URL}/api/font/generate`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ session_id: sessionId }),
+    body: JSON.stringify({
+      session_id: sessionId,
+      family_name: familyName,
+      designer: designer ?? "",
+    }),
   });
   await expectOk(response);
   return response.blob();

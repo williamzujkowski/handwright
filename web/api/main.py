@@ -15,7 +15,17 @@ from engine.fontgen.builder import FontBuilder, FontMetadata
 from engine.glyphs.extractor import GlyphExtractor
 from engine.renderer.handwriting import HandwritingRenderer, RenderOptions
 from engine.segmentation.detector import WorksheetDetector
-from engine.worksheet.generator import WorksheetGenerator
+from engine.worksheet.generator import (
+    DIGIT_VARIANTS,
+    DIGITS,
+    LOWERCASE,
+    LOWERCASE_VARIANTS,
+    PUNCTUATION,
+    PUNCTUATION_VARIANTS,
+    UPPERCASE,
+    UPPERCASE_VARIANTS,
+    WorksheetGenerator,
+)
 
 # ---------------------------------------------------------------------------
 # Application factory
@@ -306,16 +316,38 @@ async def generate_font(body: FontGenerateRequest) -> FontGenerateResponse:
         )
 
     # Build glyph map: character -> image path
-    # Glyph files are named like "0001_a_1.png" — extract the character from the label
+    # Build the expected character order (same as worksheet generator)
+    char_order: list[str] = []
+    for char in LOWERCASE:
+        for _ in range(LOWERCASE_VARIANTS):
+            char_order.append(char)
+    for char in UPPERCASE:
+        for _ in range(UPPERCASE_VARIANTS):
+            char_order.append(char)
+    for char in DIGITS:
+        for _ in range(DIGIT_VARIANTS):
+            char_order.append(char)
+    for char in PUNCTUATION:
+        for _ in range(PUNCTUATION_VARIANTS):
+            char_order.append(char)
+    char_order.append(" ")
+
     glyph_map: dict[str, Path] = {}
-    for png in sorted(glyphs_dir.glob("*.png")):
-        # Label is between first underscore and last underscore
+    glyph_files = sorted(glyphs_dir.glob("*.png"))
+
+    for i, png in enumerate(glyph_files):
         parts = png.stem.split("_", 1)
         if len(parts) < 2:
             continue
         label = parts[1]
-        # For variant labels like "a_1", take the first character
+
+        # Try to extract character from label (e.g., "a_1" -> "a")
         char = label.split("_")[0] if "_" in label else label
+
+        # If label is a fallback like "cell_0", use index to look up character
+        if len(char) > 1 and i < len(char_order):
+            char = char_order[i]
+
         # Only take the first variant of each character
         if char and len(char) == 1 and char not in glyph_map:
             glyph_map[char] = png

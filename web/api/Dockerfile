@@ -1,36 +1,31 @@
-# Python 3.11 slim base for a smaller image
+# Python 3.11 slim base
 FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install system dependencies required by OpenCV and other native packages
+# Install system dependencies required by OpenCV
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libgl1 \
     libglib2.0-0 \
     libgomp1 \
-    potrace \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy and install Python dependencies before copying source
-# so Docker can cache the layer when only source changes
-COPY requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+# Copy project files for installation
+COPY pyproject.toml ./
+COPY engine/ ./engine/
+COPY web/ ./web/
 
-# Copy the engine package so the API can import it
-COPY --from=. /engine /engine
-RUN pip install --no-cache-dir -e /engine
-
-# Copy API source
-COPY . .
+# Install the package with all dependencies
+RUN pip install --no-cache-dir .
 
 # Non-root user for security
 RUN adduser --system --uid 1001 apiuser && \
     mkdir -p /app/uploads && \
-    chown -R apiuser:apiuser /app
+    chown -R apiuser:nogroup /app
 
 USER apiuser
 
 EXPOSE 8000
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "web.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
