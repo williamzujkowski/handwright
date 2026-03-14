@@ -1,5 +1,5 @@
-# Python 3.11 slim base
-FROM python:3.11-slim
+# Python 3.12 slim base (LTS)
+FROM python:3.12-slim
 
 WORKDIR /app
 

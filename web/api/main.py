@@ -1,7 +1,13 @@
 """Handwright API — FastAPI backend for handwriting font generation."""
 
+import asyncio
+import logging
+import shutil
 import tempfile
+import time
 import uuid
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, File, HTTPException, Request, UploadFile
@@ -37,13 +43,56 @@ _UPLOAD_SIZE_LIMIT_BYTES = 10 * 1024 * 1024  # 10 MB
 _ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".pdf", ".heic"}
 _UPLOADS_DIR = Path(tempfile.gettempdir()) / "handwright" / "uploads"
 _OUTPUTS_DIR = Path(tempfile.gettempdir()) / "handwright" / "outputs"
+_SESSION_MAX_AGE_SECONDS = 3600  # 1 hour
+
+# Magic bytes for file content validation
+_MAGIC_BYTES: dict[str, list[bytes]] = {
+    ".png": [b"\x89PNG"],
+    ".jpg": [b"\xff\xd8\xff"],
+    ".jpeg": [b"\xff\xd8\xff"],
+    ".pdf": [b"%PDF"],
+    ".heic": [b"\x00\x00\x00", b"ftypheic", b"ftypmif1"],
+}
+
+logger = logging.getLogger("handwright")
 
 limiter = Limiter(key_func=get_remote_address)
+
+
+async def _cleanup_old_sessions() -> None:
+    """Remove upload sessions older than _SESSION_MAX_AGE_SECONDS."""
+    while True:
+        await asyncio.sleep(300)  # Check every 5 minutes
+        now = time.time()
+        for base_dir in [_UPLOADS_DIR, _OUTPUTS_DIR]:
+            if not base_dir.exists():
+                continue
+            for item in base_dir.iterdir():
+                try:
+                    age = now - item.stat().st_mtime
+                    if age > _SESSION_MAX_AGE_SECONDS:
+                        if item.is_dir():
+                            shutil.rmtree(item, ignore_errors=True)
+                        else:
+                            item.unlink(missing_ok=True)
+                        logger.info("Cleaned up expired session artifact: %s", item.name)
+                except OSError:
+                    pass
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI) -> AsyncGenerator[None]:
+    """Application lifespan: start background tasks on startup."""
+    cleanup_task = asyncio.create_task(_cleanup_old_sessions())
+    yield
+    cleanup_task.cancel()
+
 
 app = FastAPI(
     title="Handwright API",
     version="0.1.0",
     description="Backend API for the Handwright handwriting-font generation service.",
+    lifespan=lifespan,
 )
 
 app.state.limiter = limiter
@@ -56,6 +105,23 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+def _validate_magic_bytes(content: bytes, extension: str) -> bool:
+    """Check that file content matches expected magic bytes for the extension."""
+    signatures = _MAGIC_BYTES.get(extension, [])
+    if not signatures:
+        return True  # No validation available for this extension
+    return any(content[: len(sig)] == sig for sig in signatures)
+
+
+def _safe_resolve(base: Path, *parts: str) -> Path:
+    """Resolve a path ensuring it stays within the base directory."""
+    resolved = (base / Path(*parts)).resolve()
+    base_resolved = base.resolve()
+    if not str(resolved).startswith(str(base_resolved) + "/") and resolved != base_resolved:
+        raise HTTPException(status_code=400, detail="Invalid path.")
+    return resolved
 
 
 @app.middleware("http")
@@ -176,6 +242,14 @@ async def upload_image(request: Request, file: UploadFile = File(...)) -> dict[s
             detail=f"Unsupported file format '{suffix}'. Allowed: {', '.join(sorted(_ALLOWED_EXTENSIONS))}",
         )
 
+    # Read and validate content
+    content = await file.read()
+    if not _validate_magic_bytes(content, suffix):
+        raise HTTPException(
+            status_code=422,
+            detail=f"File content does not match expected format for '{suffix}'.",
+        )
+
     # Create session
     session_id = uuid.uuid4().hex
     session_dir = _UPLOADS_DIR / session_id
@@ -183,7 +257,6 @@ async def upload_image(request: Request, file: UploadFile = File(...)) -> dict[s
 
     # Save uploaded file
     upload_path = session_dir / f"original{suffix}"
-    content = await file.read()
     upload_path.write_bytes(content)
 
     return {"session_id": session_id, "filename": filename, "size_bytes": str(len(content))}
@@ -216,14 +289,17 @@ async def get_glyphs(session_id: str) -> dict[str, object]:
     if image_path is None:
         raise HTTPException(status_code=404, detail="No uploaded image found for this session.")
 
-    # Run detection + extraction pipeline
+    # Run detection + extraction pipeline (CPU-bound, offload to thread pool)
     glyphs_dir = session_dir / "glyphs"
+    loop = asyncio.get_event_loop()
 
     detector = WorksheetDetector()
-    result = detector.detect(image_path)
+    result = await loop.run_in_executor(None, detector.detect, image_path)
 
     extractor = GlyphExtractor()
-    glyphs = extractor.extract(
+    glyphs = await loop.run_in_executor(
+        None,
+        extractor.extract,
         result.corrected_image_path or image_path,
         result.boxes,
         glyphs_dir,
@@ -252,9 +328,8 @@ async def get_glyph_image(session_id: str, filename: str) -> FileResponse:
     Raises:
         404: If session or glyph image not found.
     """
-    # Sanitize filename to prevent path traversal
     safe_name = Path(filename).name
-    image_path = _UPLOADS_DIR / session_id / "glyphs" / safe_name
+    image_path = _safe_resolve(_UPLOADS_DIR, session_id, "glyphs", safe_name)
 
     if not image_path.exists() or not image_path.is_file():
         raise HTTPException(status_code=404, detail="Glyph image not found.")
@@ -297,7 +372,8 @@ async def render_text(request: Request, body: RenderRequest) -> RenderResponse:
     )
 
     renderer = HandwritingRenderer()
-    renderer.render(body.text, options, output_path)
+    loop = asyncio.get_event_loop()
+    await loop.run_in_executor(None, renderer.render, body.text, options, output_path)
 
     from PIL import Image as PILImage
 
@@ -384,10 +460,11 @@ async def generate_font(request: Request, body: FontGenerateRequest) -> FontGene
     )
 
     builder = FontBuilder()
-    builder.build_ttf(glyph_map, font_path, metadata=meta)
+    loop = asyncio.get_event_loop()
+    await loop.run_in_executor(None, lambda: builder.build_ttf(glyph_map, font_path, metadata=meta))
 
     woff2_path = _OUTPUTS_DIR / f"{body.session_id}.woff2"
-    builder.build_woff2(font_path, woff2_path)
+    await loop.run_in_executor(None, builder.build_woff2, font_path, woff2_path)
 
     ttf_url = f"/api/fonts/{body.session_id}.ttf"
     woff2_url = f"/api/fonts/{body.session_id}.woff2"
@@ -418,7 +495,7 @@ async def generate_font(request: Request, body: FontGenerateRequest) -> FontGene
 async def get_render_image(filename: str) -> FileResponse:
     """Serve a rendered handwriting image."""
     safe_name = Path(filename).name
-    path = _OUTPUTS_DIR / safe_name
+    path = _safe_resolve(_OUTPUTS_DIR, safe_name)
     if not path.exists():
         raise HTTPException(status_code=404, detail="Render not found.")
     return FileResponse(path=str(path), media_type="image/png")
@@ -428,7 +505,7 @@ async def get_render_image(filename: str) -> FileResponse:
 async def get_font_file(filename: str) -> FileResponse:
     """Serve a generated font file (.ttf or .woff2)."""
     safe_name = Path(filename).name
-    path = _OUTPUTS_DIR / safe_name
+    path = _safe_resolve(_OUTPUTS_DIR, safe_name)
     if not path.exists():
         raise HTTPException(status_code=404, detail="Font not found.")
     media_type = "font/woff2" if safe_name.endswith(".woff2") else "font/ttf"

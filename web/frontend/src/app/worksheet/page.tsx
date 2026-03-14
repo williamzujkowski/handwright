@@ -50,7 +50,10 @@ export default function WorksheetPage() {
         the Upload step.
       </p>
 
-      <div className="rounded-xl border border-gray-800 bg-gray-900 p-10 flex flex-col items-center gap-6 text-center">
+      <form
+        onSubmit={(e) => { e.preventDefault(); void handleGenerate(); }}
+        className="rounded-xl border border-gray-800 bg-gray-900 p-10 flex flex-col items-center gap-6 text-center"
+      >
         <div className="w-16 h-16 rounded-full bg-gray-800 flex items-center justify-center text-3xl">
           📄
         </div>
@@ -75,9 +78,9 @@ export default function WorksheetPage() {
         </label>
 
         <button
-          onClick={handleGenerate}
+          type="submit"
           disabled={loading}
-          className={`inline-flex items-center justify-center rounded-lg text-white font-semibold px-6 py-2.5 text-sm transition-colors ${
+          className={`inline-flex items-center justify-center rounded-lg text-white font-semibold px-6 py-2.5 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-900 ${
             loading
               ? "bg-indigo-600 opacity-50 cursor-not-allowed"
               : "bg-indigo-600 hover:bg-indigo-500 cursor-pointer"
@@ -87,9 +90,9 @@ export default function WorksheetPage() {
         </button>
 
         {error && (
-          <p className="text-red-400 text-sm mt-2">Error: {error}</p>
+          <p className="text-red-400 text-sm mt-2" role="alert">Error: {error}</p>
         )}
-      </div>
+      </form>
 
       <div className="mt-8 rounded-lg border border-gray-800 bg-gray-900/50 p-6">
         <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wide mb-3">

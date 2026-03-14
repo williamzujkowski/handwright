@@ -455,6 +455,10 @@ function GeneratePageContent() {
                 step={2}
                 value={fontSize}
                 onChange={(e) => setFontSize(Number(e.target.value))}
+                aria-valuemin={16}
+                aria-valuemax={96}
+                aria-valuenow={fontSize}
+                aria-label={`Font size: ${fontSize} pixels`}
                 className="w-full h-2 rounded-lg appearance-none cursor-pointer bg-gray-700 accent-indigo-500"
               />
               <div className="flex justify-between text-xs text-gray-600 mt-1">

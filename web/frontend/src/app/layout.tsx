@@ -38,6 +38,12 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-950 text-gray-100 min-h-screen`}
       >
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[60] focus:px-4 focus:py-2 focus:bg-indigo-600 focus:text-white focus:rounded-lg focus:text-sm focus:font-semibold"
+        >
+          Skip to content
+        </a>
         <nav className="border-b border-gray-800 bg-gray-900/80 backdrop-blur-sm sticky top-0 z-50">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-14">
@@ -47,12 +53,12 @@ export default function RootLayout({
               >
                 Handwright
               </Link>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1 overflow-x-auto">
                 {navLinks.map(({ href, label }) => (
                   <Link
                     key={href}
                     href={href}
-                    className="px-3 py-1.5 rounded-md text-sm text-gray-300 hover:text-white hover:bg-gray-800 transition-colors"
+                    className="px-3 py-1.5 rounded-md text-sm text-gray-300 hover:text-white hover:bg-gray-800 transition-colors whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-900"
                   >
                     {label}
                   </Link>
@@ -62,7 +68,7 @@ export default function RootLayout({
           </div>
         </nav>
         <ToastProvider>
-          <main>{children}</main>
+          <main id="main-content">{children}</main>
         </ToastProvider>
       </body>
     </html>

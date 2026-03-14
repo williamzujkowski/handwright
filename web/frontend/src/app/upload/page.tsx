@@ -108,7 +108,9 @@ export default function UploadPage() {
         onDragLeave={() => setDragOver(false)}
         onDrop={onDrop}
         onClick={() => inputRef.current?.click()}
-        className={`rounded-xl border-2 border-dashed transition-colors p-8 sm:p-16 flex flex-col items-center gap-4 text-center cursor-pointer ${
+        tabIndex={0}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); inputRef.current?.click(); } }}
+        className={`rounded-xl border-2 border-dashed transition-colors p-8 sm:p-16 flex flex-col items-center gap-4 text-center cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-950 ${
           dragOver
             ? "border-indigo-500 bg-indigo-950/30"
             : "border-gray-700 bg-gray-900 hover:border-indigo-600"

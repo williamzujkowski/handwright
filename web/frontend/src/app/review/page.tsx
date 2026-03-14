@@ -49,9 +49,17 @@ function ReviewContent() {
   if (loading) {
     return (
       <div className="max-w-5xl mx-auto px-4 py-16">
+        <ProgressStepper />
         <h1 className="text-3xl font-bold text-white mb-3">Review Glyphs</h1>
-        <div className="flex items-center justify-center py-20">
-          <div className="text-gray-400 text-lg">Loading glyphs...</div>
+        <div className="py-12">
+          <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-3">
+            {Array.from({ length: 24 }).map((_, i) => (
+              <div key={i} className="rounded-lg border border-gray-800 bg-gray-900 overflow-hidden">
+                <div className="w-full aspect-square bg-gray-800 animate-pulse" />
+                <div className="h-4 mx-2 my-1 bg-gray-800 rounded animate-pulse" />
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     );
@@ -103,14 +111,29 @@ function ReviewContent() {
       </div>
 
       {/* Glyph grid */}
-      <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-3">
+      {glyphs.length === 0 ? (
+        <div className="rounded-xl border border-gray-800 bg-gray-900 p-12 text-center">
+          <p className="text-gray-400 text-lg mb-2">No glyphs extracted</p>
+          <p className="text-gray-500 text-sm mb-6">
+            The worksheet could not be processed. Try uploading a clearer scan with better lighting.
+          </p>
+          <a
+            href="/upload"
+            className="inline-flex items-center justify-center rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-6 py-2.5 text-sm transition-colors"
+          >
+            Re-upload Worksheet
+          </a>
+        </div>
+      ) : (
+      <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-3" role="group" aria-label="Extracted glyphs">
         {glyphs.map((glyph) => {
           const isRejected = rejected.has(glyph.label);
           return (
             <button
               key={glyph.label}
               onClick={() => toggleRejected(glyph.label)}
-              className={`group relative rounded-lg border flex flex-col items-center overflow-hidden transition-all ${
+              aria-pressed={!isRejected}
+              className={`group relative rounded-lg border flex flex-col items-center overflow-hidden transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-950 ${
                 isRejected
                   ? "border-red-800 bg-red-950/30 opacity-40"
                   : "border-gray-800 bg-gray-900 hover:border-gray-600"
@@ -143,6 +166,7 @@ function ReviewContent() {
           );
         })}
       </div>
+      )}
 
       {/* Action bar */}
       <div className="mt-10 flex flex-col sm:flex-row gap-3 justify-end">
