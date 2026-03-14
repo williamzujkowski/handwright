@@ -1,7 +1,5 @@
 """Handwright API — FastAPI backend for handwriting font generation."""
 
-from __future__ import annotations
-
 import tempfile
 import uuid
 from pathlib import Path
@@ -10,6 +8,9 @@ from fastapi import FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
 
 from engine.fontgen.builder import FontBuilder, FontMetadata
 from engine.glyphs.extractor import GlyphExtractor
@@ -36,11 +37,16 @@ _ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".pdf", ".heic"}
 _UPLOADS_DIR = Path(tempfile.gettempdir()) / "handwright" / "uploads"
 _OUTPUTS_DIR = Path(tempfile.gettempdir()) / "handwright" / "outputs"
 
+limiter = Limiter(key_func=get_remote_address)
+
 app = FastAPI(
     title="Handwright API",
     version="0.1.0",
     description="Backend API for the Handwright handwriting-font generation service.",
 )
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.add_middleware(
     CORSMiddleware,
@@ -108,7 +114,10 @@ class FontGenerateResponse(BaseModel):
     """Response returned after font generation."""
 
     download_url: str
+    woff2_url: str
+    css_snippet: str
     glyph_count: int
+    variant_count: int
 
 
 # ---------------------------------------------------------------------------
@@ -117,7 +126,8 @@ class FontGenerateResponse(BaseModel):
 
 
 @app.post("/api/worksheet/generate", tags=["worksheet"])
-async def generate_worksheet() -> FileResponse:
+@limiter.limit("30/minute")
+async def generate_worksheet(request: Request) -> FileResponse:
     """Generate the complete handwriting worksheet PDF.
 
     Returns a downloadable PDF with all character cells, alignment markers,
@@ -142,7 +152,8 @@ async def generate_worksheet() -> FileResponse:
 
 
 @app.post("/api/upload", tags=["upload"])
-async def upload_image(file: UploadFile = File(...)) -> dict[str, str]:  # noqa: B008
+@limiter.limit("10/minute")
+async def upload_image(request: Request, file: UploadFile = File(...)) -> dict[str, str]:  # noqa: B008
     """Accept a handwriting image upload and begin processing.
 
     Returns a session_id for subsequent glyph extraction calls.
@@ -252,7 +263,8 @@ async def get_glyph_image(session_id: str, filename: str) -> FileResponse:
 
 
 @app.post("/api/render", response_model=RenderResponse, tags=["render"])
-async def render_text(body: RenderRequest) -> RenderResponse:
+@limiter.limit("30/minute")
+async def render_text(request: Request, body: RenderRequest) -> RenderResponse:
     """Render arbitrary text using handwriting glyphs.
 
     Raises:
@@ -298,7 +310,8 @@ async def render_text(body: RenderRequest) -> RenderResponse:
 
 
 @app.post("/api/font/generate", response_model=FontGenerateResponse, tags=["font"])
-async def generate_font(body: FontGenerateRequest) -> FontGenerateResponse:
+@limiter.limit("30/minute")
+async def generate_font(request: Request, body: FontGenerateRequest) -> FontGenerateResponse:
     """Build a downloadable .ttf font from extracted glyphs.
 
     Raises:
@@ -332,7 +345,7 @@ async def generate_font(body: FontGenerateRequest) -> FontGenerateResponse:
             char_order.append(char)
     char_order.append(" ")
 
-    glyph_map: dict[str, Path] = {}
+    glyph_map: dict[str, list[Path]] = {}
     glyph_files = sorted(glyphs_dir.glob("*.png"))
 
     for i, png in enumerate(glyph_files):
@@ -348,9 +361,9 @@ async def generate_font(body: FontGenerateRequest) -> FontGenerateResponse:
         if len(char) > 1 and i < len(char_order):
             char = char_order[i]
 
-        # Only take the first variant of each character
-        if char and len(char) == 1 and char not in glyph_map:
-            glyph_map[char] = png
+        # Collect all variants for each character
+        if char and len(char) == 1:
+            glyph_map.setdefault(char, []).append(png)
 
     if not glyph_map:
         raise HTTPException(
@@ -368,9 +381,26 @@ async def generate_font(body: FontGenerateRequest) -> FontGenerateResponse:
     builder = FontBuilder()
     builder.build_ttf(glyph_map, font_path, metadata=meta)
 
+    woff2_path = _OUTPUTS_DIR / f"{body.session_id}.woff2"
+    builder.build_woff2(font_path, woff2_path)
+
+    ttf_url = f"/api/fonts/{body.session_id}.ttf"
+    woff2_url = f"/api/fonts/{body.session_id}.woff2"
+    css_snippet = (
+        f"@font-face {{\n"
+        f"  font-family: '{body.family_name}';\n"
+        f"  src: url('{woff2_url}') format('woff2'),\n"
+        f"       url('{ttf_url}') format('truetype');\n"
+        f"}}"
+    )
+
+    total_variants = sum(len(paths) for paths in glyph_map.values())
     return FontGenerateResponse(
-        download_url=f"/api/fonts/{body.session_id}.ttf",
+        download_url=ttf_url,
+        woff2_url=woff2_url,
+        css_snippet=css_snippet,
         glyph_count=len(glyph_map),
+        variant_count=total_variants,
     )
 
 
@@ -391,13 +421,14 @@ async def get_render_image(filename: str) -> FileResponse:
 
 @app.get("/api/fonts/{filename}", tags=["font"])
 async def get_font_file(filename: str) -> FileResponse:
-    """Serve a generated font file."""
+    """Serve a generated font file (.ttf or .woff2)."""
     safe_name = Path(filename).name
     path = _OUTPUTS_DIR / safe_name
     if not path.exists():
         raise HTTPException(status_code=404, detail="Font not found.")
+    media_type = "font/woff2" if safe_name.endswith(".woff2") else "font/ttf"
     return FileResponse(
         path=str(path),
-        media_type="font/ttf",
+        media_type=media_type,
         filename=safe_name,
     )

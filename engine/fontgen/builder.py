@@ -105,14 +105,18 @@ def _image_to_contours(
 class FontBuilder:
     """Assembles individual glyph images into a TrueType font file.
 
-    Accepts a mapping of Unicode code points to glyph image paths and uses
-    fonttools to construct a valid .ttf font that can be installed system-wide
-    or embedded in documents.
+    Accepts a mapping of Unicode code points to lists of glyph image paths and
+    uses fonttools to construct a valid .ttf font that can be installed
+    system-wide or embedded in documents.  When multiple image paths are
+    supplied for a character the base glyph (e.g. ``a``) is built from the
+    first image and alternate variants are stored as ``a.alt1``, ``a.alt2``,
+    etc.  Applications with OpenType support can access these alternate glyphs
+    directly.
     """
 
     def build_ttf(
         self,
-        glyph_map: dict[str, Path],
+        glyph_map: dict[str, list[Path]],
         output_path: Path,
         metadata: FontMetadata | None = None,
         units_per_em: int = 1000,
@@ -120,8 +124,11 @@ class FontBuilder:
         """Build a TrueType font from a collection of glyph images.
 
         Args:
-            glyph_map: Mapping of single-character strings to the corresponding
-                       glyph PNG paths. Each PNG should have a transparent background.
+            glyph_map: Mapping of single-character strings to a list of
+                       corresponding glyph PNG paths.  The first path becomes
+                       the base glyph; subsequent paths become ``<name>.alt1``,
+                       ``<name>.alt2``, etc.  Each PNG should have a
+                       transparent background.
             output_path: Destination path for the .ttf file.
             metadata: Optional font metadata to embed. Defaults are used when omitted.
             units_per_em: Font coordinate space size. Standard value is 1000.
@@ -137,9 +144,10 @@ class FontBuilder:
             raise ValueError("glyph_map must not be empty")
 
         # Validate all image paths exist before doing any work
-        for char, img_path in glyph_map.items():
-            if not img_path.exists():
-                raise FileNotFoundError(f"Glyph image not found for '{char}': {img_path}")
+        for char, img_paths in glyph_map.items():
+            for img_path in img_paths:
+                if not img_path.exists():
+                    raise FileNotFoundError(f"Glyph image not found for '{char}': {img_path}")
 
         if metadata is None:
             metadata = FontMetadata(family_name="Handwright")
@@ -158,15 +166,21 @@ class FontBuilder:
             "space": units_per_em // 4,
         }
 
-        for char, img_path in sorted(glyph_map.items()):
-            gname = _char_to_glyph_name(char)
-            if gname not in glyph_names:
-                glyph_names.append(gname)
-            char_map[ord(char)] = gname
+        for char, img_paths in sorted(glyph_map.items()):
+            base_gname = _char_to_glyph_name(char)
+            for variant_index, img_path in enumerate(img_paths):
+                if variant_index == 0:
+                    gname = base_gname
+                    char_map[ord(char)] = gname
+                else:
+                    gname = f"{base_gname}.alt{variant_index}"
 
-            contours, adv_w = _image_to_contours(img_path, units_per_em, ascender)
-            glyph_data[gname] = contours
-            advance_widths[gname] = adv_w
+                if gname not in glyph_names:
+                    glyph_names.append(gname)
+
+                contours, adv_w = _image_to_contours(img_path, units_per_em, ascender)
+                glyph_data[gname] = contours
+                advance_widths[gname] = adv_w
 
         # Create the font using fontTools.fontBuilder
         fb = FTFontBuilder(units_per_em, isTTF=True)
@@ -213,6 +227,34 @@ class FontBuilder:
         fb.font.save(str(output_path))
 
         return output_path
+
+    def build_woff2(self, ttf_path: Path, woff2_path: Path) -> Path:
+        """Convert an existing TTF file to WOFF2 format.
+
+        Args:
+            ttf_path: Path to the source .ttf font file.
+            woff2_path: Destination path for the .woff2 file.
+
+        Returns:
+            The resolved path of the written .woff2 font file.
+
+        Raises:
+            FileNotFoundError: If *ttf_path* does not exist.
+        """
+        from fontTools.ttLib import TTFont
+
+        ttf_path = Path(ttf_path).resolve()
+        if not ttf_path.exists():
+            raise FileNotFoundError(f"TTF file not found: {ttf_path}")
+
+        woff2_path = Path(woff2_path).resolve()
+        woff2_path.parent.mkdir(parents=True, exist_ok=True)
+
+        font = TTFont(ttf_path)
+        font.flavor = "woff2"
+        font.save(str(woff2_path))
+
+        return woff2_path
 
 
 def _build_glyf_dict(

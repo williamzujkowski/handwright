@@ -13,7 +13,13 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 from PIL import Image
 
-from web.api.main import app
+from web.api.main import app, limiter
+
+
+@pytest.fixture(autouse=True)
+def _reset_rate_limiter() -> None:
+    """Reset rate limiter storage between tests."""
+    limiter.reset()
 
 
 @pytest.mark.asyncio

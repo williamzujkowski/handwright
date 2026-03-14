@@ -7,7 +7,9 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 interface FontGenerateResponse {
   download_url: string;
-  family_name: string;
+  woff2_url: string;
+  css_snippet: string;
+  glyph_count: number;
 }
 
 interface RenderResponse {
@@ -23,6 +25,8 @@ function GeneratePageContent() {
   const [generating, setGenerating] = useState(false);
   const [fontError, setFontError] = useState<string | null>(null);
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
+  const [woff2Url, setWoff2Url] = useState<string | null>(null);
+  const [cssSnippet, setCssSnippet] = useState<string | null>(null);
 
   const [renderText, setRenderText] = useState("");
   const [rendering, setRendering] = useState(false);
@@ -55,6 +59,8 @@ function GeneratePageContent() {
     setGenerating(true);
     setFontError(null);
     setDownloadUrl(null);
+    setWoff2Url(null);
+    setCssSnippet(null);
 
     try {
       const response = await fetch(`${API_URL}/api/font/generate`, {
@@ -74,6 +80,8 @@ function GeneratePageContent() {
 
       const data = (await response.json()) as FontGenerateResponse;
       setDownloadUrl(data.download_url);
+      setWoff2Url(data.woff2_url);
+      setCssSnippet(data.css_snippet);
     } catch (err) {
       setFontError(err instanceof Error ? err.message : "Font generation failed");
     } finally {
@@ -86,6 +94,14 @@ function GeneratePageContent() {
     const a = document.createElement("a");
     a.href = `${API_URL}${downloadUrl}`;
     a.download = `${familyName.replace(/\s+/g, "_")}.ttf`;
+    a.click();
+  };
+
+  const handleDownloadWoff2 = () => {
+    if (!woff2Url) return;
+    const a = document.createElement("a");
+    a.href = `${API_URL}${woff2Url}`;
+    a.download = `${familyName.replace(/\s+/g, "_")}.woff2`;
     a.click();
   };
 
@@ -209,6 +225,15 @@ function GeneratePageContent() {
                 Download .ttf
               </button>
             )}
+
+            {woff2Url && (
+              <button
+                onClick={handleDownloadWoff2}
+                className="inline-flex items-center justify-center rounded-lg border border-indigo-500 text-indigo-400 hover:bg-indigo-950/50 font-semibold px-5 py-2.5 text-sm transition-colors"
+              >
+                Download WOFF2
+              </button>
+            )}
           </div>
         </div>
 
@@ -220,8 +245,19 @@ function GeneratePageContent() {
 
         {downloadUrl && !fontError && (
           <div className="mt-4 p-3 rounded-lg bg-green-950/50 border border-green-800 text-green-300 text-sm">
-            Font generated successfully. Click &quot;Download .ttf&quot; to save
-            your font file.
+            Font generated successfully. Click &quot;Download .ttf&quot; or
+            &quot;Download WOFF2&quot; to save your font file.
+          </div>
+        )}
+
+        {cssSnippet && !fontError && (
+          <div className="mt-4">
+            <p className="text-sm font-medium text-gray-300 mb-1.5">
+              CSS snippet
+            </p>
+            <pre className="rounded-lg bg-gray-800 border border-gray-700 text-gray-300 text-xs px-4 py-3 overflow-x-auto whitespace-pre">
+              {cssSnippet}
+            </pre>
           </div>
         )}
       </section>

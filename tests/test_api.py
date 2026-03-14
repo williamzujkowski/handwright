@@ -8,12 +8,27 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 from PIL import Image
 
-from web.api.main import app
+from web.api.main import app, limiter
 
 
 @pytest.fixture()
 def anyio_backend() -> str:
     return "asyncio"
+
+
+@pytest.fixture(autouse=True)
+def _reset_rate_limiter() -> None:
+    """Reset rate limiter storage between tests to prevent cross-test pollution."""
+    limiter.reset()
+
+
+@pytest.mark.asyncio
+async def test_docs_returns_200() -> None:
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.get("/docs")
+
+    assert resp.status_code == 200
 
 
 @pytest.mark.asyncio
@@ -85,6 +100,31 @@ async def test_get_glyphs_nonexistent_session_returns_404() -> None:
         resp = await client.get("/api/glyphs/nonexistent_session_id_000")
 
     assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_upload_rate_limit_returns_429_after_10_requests() -> None:
+    """Verify that the upload endpoint enforces a 10/minute rate limit."""
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        for _ in range(10):
+            buf = io.BytesIO()
+            Image.new("RGB", (1, 1)).save(buf, format="PNG")
+            buf.seek(0)
+            resp = await client.post(
+                "/api/upload",
+                files={"file": ("test_image.png", buf, "image/png")},
+            )
+            assert resp.status_code == 200
+
+        buf = io.BytesIO()
+        Image.new("RGB", (1, 1)).save(buf, format="PNG")
+        buf.seek(0)
+        resp = await client.post(
+            "/api/upload",
+            files={"file": ("test_image.png", buf, "image/png")},
+        )
+        assert resp.status_code == 429
 
 
 @pytest.mark.asyncio
