@@ -22,7 +22,7 @@ build:
 # Run all tests (frontend + backend)
 test:
 	@echo "Running frontend tests..."
-	cd web/frontend && pnpm test --passWithNoTests
+	cd web/frontend && pnpm test
 	@echo "Running backend tests..."
 	cd web/api && python -m pytest tests/ -v
 	@echo "Running engine tests..."

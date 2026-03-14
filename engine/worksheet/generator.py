@@ -21,11 +21,13 @@ LOWERCASE = list("abcdefghijklmnopqrstuvwxyz")
 UPPERCASE = list("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
 DIGITS = list("0123456789")
 PUNCTUATION = list(".,!?:;'\"-_()/ &")
+SYMBOLS = list("@#$%^*+=[]{}|<>~`\\")  # Extended symbols for full-set worksheets
 
 LOWERCASE_VARIANTS = 3
 UPPERCASE_VARIANTS = 2
 DIGIT_VARIANTS = 2
 PUNCTUATION_VARIANTS = 1
+SYMBOL_VARIANTS = 1
 
 # Layout constants
 CELL_SIZE = 28 * mm  # 28mm cells
@@ -63,6 +65,7 @@ class WorksheetConfig:
     version: str = "1.0"
     cell_size_mm: float = 28.0
     cols_per_row: int = 8
+    include_symbols: bool = False
 
     def build_pages(self) -> list[PageSpec]:
         """Build the page specifications for the full character set."""
@@ -86,6 +89,14 @@ class WorksheetConfig:
         # Punctuation: 1 variant each
         for char in PUNCTUATION:
             all_cells.append(CellSpec(char=char, variant=1, label=f"p_{PUNCTUATION.index(char)}"))
+
+        # Extended symbols (optional)
+        if self.include_symbols:
+            for char in SYMBOLS:
+                for v in range(1, SYMBOL_VARIANTS + 1):
+                    all_cells.append(
+                        CellSpec(char=char, variant=v, label=f"s_{SYMBOLS.index(char)}")
+                    )
 
         # Space sampling cell
         all_cells.append(CellSpec(char=" ", variant=1, label="space"))

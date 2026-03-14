@@ -11,6 +11,8 @@ from engine.worksheet.generator import (
     LOWERCASE_VARIANTS,
     PUNCTUATION,
     PUNCTUATION_VARIANTS,
+    SYMBOL_VARIANTS,
+    SYMBOLS,
     UPPERCASE,
     UPPERCASE_VARIANTS,
     WorksheetConfig,
@@ -82,6 +84,27 @@ class TestWorksheetGenerator:
 
         content = output.read_bytes()
         assert content[:5] == b"%PDF-"
+
+    def test_generate_pdf_with_symbols(self, tmp_path: Path) -> None:
+        """Worksheet with symbols should include additional pages."""
+        config = WorksheetConfig(include_symbols=True)
+        generator = WorksheetGenerator(config)
+        output = tmp_path / "symbols.pdf"
+        generator.generate_pdf(output)
+
+        assert output.exists()
+        assert output.stat().st_size > 0
+
+    def test_symbols_config_has_more_cells(self) -> None:
+        """Enabling symbols should add more cells than the default set."""
+        default_config = WorksheetConfig()
+        symbols_config = WorksheetConfig(include_symbols=True)
+
+        default_cells = sum(len(p.cells) for p in default_config.build_pages())
+        symbols_cells = sum(len(p.cells) for p in symbols_config.build_pages())
+
+        expected_extra = len(SYMBOLS) * SYMBOL_VARIANTS
+        assert symbols_cells == default_cells + expected_extra
 
     def test_generate_pdf_performance(self, tmp_path: Path) -> None:
         """Worksheet should generate in under 5 seconds."""

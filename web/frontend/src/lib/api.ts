@@ -31,6 +31,24 @@ export interface RenderParams {
   width?: number;
   /** Font size in points (default 48) */
   font_size?: number;
+  /** Line spacing multiplier (default 1.5) */
+  line_spacing?: number;
+}
+
+/** Response from the render endpoint. */
+export interface RenderResponse {
+  image_url: string;
+  width: number;
+  height: number;
+}
+
+/** Response from the font generation endpoint. */
+export interface FontGenerateResponse {
+  download_url: string;
+  woff2_url: string;
+  css_snippet: string;
+  glyph_count: number;
+  variant_count: number;
 }
 
 /** Upload response returned after a worksheet image is submitted. */
@@ -62,10 +80,13 @@ async function expectOk(response: Response): Promise<Response> {
  * Request a blank handwriting worksheet PDF from the backend.
  * Returns the raw PDF Blob so the caller can trigger a browser download.
  */
-export async function generateWorksheet(): Promise<Blob> {
-  const response = await fetch(`${BASE_URL}/api/worksheet/generate`, {
-    method: "POST",
-  });
+export async function generateWorksheet(
+  includeSymbols = false,
+): Promise<Blob> {
+  const url = new URL(`${BASE_URL}/api/worksheet/generate`);
+  if (includeSymbols) url.searchParams.set("include_symbols", "true");
+
+  const response = await fetch(url.toString(), { method: "POST" });
   await expectOk(response);
   return response.blob();
 }
@@ -100,27 +121,53 @@ export async function getGlyphs(sessionId: string): Promise<GlyphsResponse> {
 
 /**
  * Render a note using the user's handwriting font.
- * Returns a PNG image Blob that the caller can display or download.
+ * Returns JSON with image_url, width, and height.
  */
-export async function renderNote(params: RenderParams): Promise<Blob> {
+export async function renderNote(
+  params: RenderParams,
+): Promise<RenderResponse> {
   const response = await fetch(`${BASE_URL}/api/render`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(params),
   });
   await expectOk(response);
-  return response.blob();
+  return response.json() as Promise<RenderResponse>;
 }
 
 /**
- * Trigger font generation for a session and download the resulting .ttf file.
- * Returns the font file as a Blob so the caller can offer a browser download.
+ * Preview text rendered in the user's handwriting font.
+ * Convenience wrapper around renderNote with sensible defaults.
+ */
+export async function previewText(params: {
+  text: string;
+  session_id: string;
+  font_size?: number;
+  line_spacing?: number;
+}): Promise<RenderResponse> {
+  const response = await fetch(`${BASE_URL}/api/render`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      text: params.text,
+      session_id: params.session_id,
+      font_size: params.font_size ?? 48,
+      line_spacing: params.line_spacing ?? 1.5,
+    }),
+  });
+  if (!response.ok) throw new Error(`Render failed: ${response.status}`);
+  return response.json() as Promise<RenderResponse>;
+}
+
+/**
+ * Trigger font generation for a session.
+ * Returns JSON with download URLs and metadata.
  */
 export async function generateFont(
   sessionId: string,
   familyName: string,
   designer?: string,
-): Promise<Blob> {
+): Promise<FontGenerateResponse> {
   const response = await fetch(`${BASE_URL}/api/font/generate`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -131,5 +178,5 @@ export async function generateFont(
     }),
   });
   await expectOk(response);
-  return response.blob();
+  return response.json() as Promise<FontGenerateResponse>;
 }

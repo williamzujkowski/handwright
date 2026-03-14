@@ -6,13 +6,14 @@ import { generateWorksheet } from "@/lib/api";
 export default function WorksheetPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [includeSymbols, setIncludeSymbols] = useState(false);
 
   async function handleGenerate() {
     setLoading(true);
     setError(null);
 
     try {
-      const blob = await generateWorksheet();
+      const blob = await generateWorksheet(includeSymbols);
 
       // Trigger browser download
       const url = URL.createObjectURL(blob);
@@ -56,6 +57,16 @@ export default function WorksheetPage() {
             clearly defined boxes with alignment markers.
           </p>
         </div>
+
+        <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={includeSymbols}
+            onChange={(e) => setIncludeSymbols(e.target.checked)}
+            className="rounded border-gray-600 bg-gray-800 text-indigo-500 focus:ring-indigo-500 focus:ring-offset-gray-900 w-4 h-4"
+          />
+          Include extended symbols (@#$%^*+=[] etc.)
+        </label>
 
         <button
           onClick={handleGenerate}

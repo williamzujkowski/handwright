@@ -106,12 +106,15 @@ async def test_pipeline_error_handling() -> None:
     """Verify proper error responses for invalid pipeline states."""
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
+        # Use a valid-format but non-existent session ID (32 hex chars)
+        fake_session = "00000000000000000000000000000000"
+
         # Render without generating font first
         render_resp = await client.post(
             "/api/render",
             json={
                 "text": "Hello",
-                "session_id": "nonexistent",
+                "session_id": fake_session,
                 "font_size": 48,
                 "line_spacing": 1.5,
             },
@@ -122,7 +125,7 @@ async def test_pipeline_error_handling() -> None:
         font_resp = await client.post(
             "/api/font/generate",
             json={
-                "session_id": "nonexistent",
+                "session_id": fake_session,
                 "family_name": "Test",
             },
         )

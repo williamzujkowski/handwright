@@ -7,7 +7,7 @@ from pathlib import Path
 from fastapi import FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
@@ -25,6 +25,7 @@ from engine.worksheet.generator import (
     PUNCTUATION_VARIANTS,
     UPPERCASE,
     UPPERCASE_VARIANTS,
+    WorksheetConfig,
     WorksheetGenerator,
 )
 
@@ -88,10 +89,10 @@ async def health() -> dict[str, str]:
 class RenderRequest(BaseModel):
     """Payload for handwriting rendering."""
 
-    text: str
-    session_id: str
-    font_size: int = 48
-    line_spacing: float = 1.5
+    text: str = Field(min_length=1, max_length=50000)
+    session_id: str = Field(pattern=r"^[a-f0-9]{32}$")
+    font_size: int = Field(default=48, ge=8, le=200)
+    line_spacing: float = Field(default=1.5, ge=0.5, le=5.0)
 
 
 class RenderResponse(BaseModel):
@@ -105,9 +106,9 @@ class RenderResponse(BaseModel):
 class FontGenerateRequest(BaseModel):
     """Payload for font generation."""
 
-    session_id: str
-    family_name: str
-    designer: str = ""
+    session_id: str = Field(pattern=r"^[a-f0-9]{32}$")
+    family_name: str = Field(min_length=1, max_length=100)
+    designer: str = Field(default="", max_length=200)
 
 
 class FontGenerateResponse(BaseModel):
@@ -127,16 +128,20 @@ class FontGenerateResponse(BaseModel):
 
 @app.post("/api/worksheet/generate", tags=["worksheet"])
 @limiter.limit("30/minute")
-async def generate_worksheet(request: Request) -> FileResponse:
+async def generate_worksheet(request: Request, include_symbols: bool = False) -> FileResponse:
     """Generate the complete handwriting worksheet PDF.
 
     Returns a downloadable PDF with all character cells, alignment markers,
     and QR metadata for automated glyph extraction.
+
+    Args:
+        include_symbols: Include extended symbols (@#$%^*+=[] etc.) on additional pages.
     """
     _OUTPUTS_DIR.mkdir(parents=True, exist_ok=True)
     output_path = _OUTPUTS_DIR / f"worksheet_{uuid.uuid4().hex[:8]}.pdf"
 
-    generator = WorksheetGenerator()
+    config = WorksheetConfig(include_symbols=include_symbols)
+    generator = WorksheetGenerator(config)
     generator.generate_pdf(output_path)
 
     return FileResponse(
