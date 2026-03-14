@@ -30,7 +30,7 @@ export default function HomePage() {
     <div className="flex flex-col">
       {/* Hero */}
       <section className="flex flex-col items-center justify-center text-center px-4 py-24 sm:py-32">
-        <h1 className="text-5xl sm:text-6xl font-bold tracking-tight text-white mb-4">
+        <h1 className="text-5xl sm:text-6xl font-bold tracking-tight mb-4 bg-gradient-to-r from-white via-indigo-200 to-indigo-400 bg-clip-text text-transparent">
           Handwright
         </h1>
         <p className="text-xl sm:text-2xl font-medium text-indigo-400 mb-6">

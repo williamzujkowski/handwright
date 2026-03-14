@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import Link from "next/link";
-import { Home, FileText, Upload, CheckSquare, Wand2 } from "lucide-react";
+import { Github } from "lucide-react";
+import { Nav } from "@/components/nav";
 import { ToastProvider } from "@/components/toast";
 import "./globals.css";
 
@@ -21,14 +21,6 @@ export const metadata: Metadata = {
     "Upload a handwriting sample and generate a fully usable font from your own handwriting.",
 };
 
-const navLinks = [
-  { href: "/", label: "Home", icon: Home },
-  { href: "/worksheet", label: "Worksheet", icon: FileText },
-  { href: "/upload", label: "Upload", icon: Upload },
-  { href: "/review", label: "Review", icon: CheckSquare },
-  { href: "/generate", label: "Generate", icon: Wand2 },
-];
-
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -37,7 +29,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-950 text-gray-100 min-h-screen`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-950 text-gray-100 min-h-screen flex flex-col`}
       >
         <a
           href="#main-content"
@@ -45,33 +37,24 @@ export default function RootLayout({
         >
           Skip to content
         </a>
-        <nav className="border-b border-gray-800 bg-gray-900/80 backdrop-blur-sm sticky top-0 z-50">
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between h-14">
-              <Link
-                href="/"
-                className="text-lg font-semibold tracking-tight text-white hover:text-indigo-400 transition-colors"
-              >
-                Handwright
-              </Link>
-              <div className="flex items-center gap-1 overflow-x-auto">
-                {navLinks.map(({ href, label, icon: Icon }) => (
-                  <Link
-                    key={href}
-                    href={href}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm text-gray-300 hover:text-white hover:bg-gray-800 transition-colors whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-900"
-                  >
-                    <Icon className="w-3.5 h-3.5" />
-                    {label}
-                  </Link>
-                ))}
-              </div>
-            </div>
-          </div>
-        </nav>
+        <Nav />
         <ToastProvider>
-          <main id="main-content">{children}</main>
+          <main id="main-content" className="flex-1">{children}</main>
         </ToastProvider>
+        <footer className="border-t border-gray-800 py-6 mt-auto">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-gray-500">
+            <p>&copy; {new Date().getFullYear()} Handwright. MIT License.</p>
+            <a
+              href="https://github.com/williamzujkowski/handwright"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-gray-400 hover:text-white transition-colors"
+            >
+              <Github className="w-4 h-4" />
+              Source on GitHub
+            </a>
+          </div>
+        </footer>
       </body>
     </html>
   );

@@ -1,6 +1,7 @@
 "use client";
 
-import { createContext, useCallback, useContext, useState } from "react";
+import { createContext, useCallback, useContext, useRef, useState } from "react";
+import { X } from "lucide-react";
 
 interface Toast {
   id: number;
@@ -24,14 +25,23 @@ let nextId = 0;
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const timersRef = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
+
+  const dismiss = useCallback((id: number) => {
+    const timer = timersRef.current.get(id);
+    if (timer) clearTimeout(timer);
+    timersRef.current.delete(id);
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  }, []);
 
   const toast = useCallback(
     (message: string, type: Toast["type"] = "success") => {
       const id = nextId++;
       setToasts((prev) => [...prev, { id, message, type }]);
-      setTimeout(() => {
+      const timer = setTimeout(() => {
         setToasts((prev) => prev.filter((t) => t.id !== id));
-      }, 3000);
+      }, 5000);
+      timersRef.current.set(id, timer);
     },
     [],
   );
@@ -86,7 +96,14 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                   />
                 </svg>
               )}
-              {t.message}
+              <span className="flex-1">{t.message}</span>
+              <button
+                onClick={() => dismiss(t.id)}
+                className="shrink-0 ml-2 p-0.5 rounded hover:bg-white/20 transition-colors"
+                aria-label="Dismiss notification"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
             </div>
           </div>
         ))}
